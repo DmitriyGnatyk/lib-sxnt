@@ -1382,7 +1382,7 @@ function SubTab:AddDropdown(opts)
                 value = opt
                 btn.Text = "▼ " .. tostring(opt)
                 if setValue then pcall(setValue, opt) end
-                if opts.callback then pcall(opts.callback, opt) end
+                if not flag and opts.callback then pcall(opts.callback, opt) end
                 if flag then Library:SetFlag(flag, opt) end
                 collapse()
             end)
