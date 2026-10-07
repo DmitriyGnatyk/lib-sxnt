@@ -1640,6 +1640,24 @@ end
 function ExpandableCard:AddMiniSlider(opts)
     return makeMiniSlider(self._holder, opts or {}, self._C, self._tw, self._corner, self._stroke)
 end
+
+function ExpandableCard:AddMiniButton(opts)
+    opts = opts or {}
+    local C, tw, corner = self._C, self._tw, self._corner
+    local btn = Instance.new("TextButton", self._holder)
+    btn.Text = tostring(opts.name or "Button")
+    btn.Font = Enum.Font.Cartoon; btn.TextSize = 11
+    btn.TextColor3 = opts.active and Color3.new(1,1,1) or C.text
+    btn.Size = UDim2.new(1, 0, 0, 26)
+    btn.BackgroundColor3 = opts.active and C.accent or Color3.fromRGB(48, 48, 54)
+    btn.BorderSizePixel = 0; btn.AutoButtonColor = false
+    corner(btn, 4)
+    btn.MouseButton1Click:Connect(function()
+        if opts.callback then pcall(opts.callback) end
+    end)
+    return btn
+end
+
 function ExpandableCard:AddMiniExpandable(opts)
     -- simple inline expandable
     opts = opts or {}
@@ -1715,6 +1733,28 @@ function ExpandableCard:AddMiniExpandable(opts)
     local inner = {}
     inner.AddMiniSwitch = function(o) return makeMiniSwitch(holder, o or {}, C, tw, corner) end
     inner.AddMiniSlider = function(o) return makeMiniSlider(holder, o or {}, C, tw, corner, stroke) end
+    inner.AddMiniButton = function(o)
+        o = o or {}
+        local btn = Instance.new("TextButton", holder)
+        btn.Text = tostring(o.name or "Button")
+        btn.Font = Enum.Font.Cartoon; btn.TextSize = 11
+        btn.TextColor3 = o.active and Color3.new(1,1,1) or C.text
+        btn.Size = UDim2.new(1, 0, 0, 26)
+        btn.BackgroundColor3 = o.active and C.accent or Color3.fromRGB(48, 48, 54)
+        btn.BorderSizePixel = 0; btn.AutoButtonColor = false
+        corner(btn, 4)
+
+        btn.MouseEnter:Connect(function()
+            if not o.active then tw(btn, 0.1, {BackgroundColor3 = Color3.fromRGB(60, 60, 68)}) end
+        end)
+        btn.MouseLeave:Connect(function()
+            if not o.active then tw(btn, 0.1, {BackgroundColor3 = Color3.fromRGB(48, 48, 54)}) end
+        end)
+        btn.MouseButton1Click:Connect(function()
+            if o.callback then pcall(o.callback) end
+        end)
+        return btn
+    end
     return inner
 end
 
