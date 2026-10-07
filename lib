@@ -1045,18 +1045,22 @@ function Tab:AddSubTab(name)
     local tw = self._tw
     local corner = self._corner
 
-    local pillRow = Instance.new("Frame")
-    pillRow.Name = "PillRow_"..name
-    pillRow.Size = UDim2.new(1,0,0,24)
-    pillRow.BackgroundTransparency = 1
-    pillRow.LayoutOrder = -1
-    pillRow.Parent = self._frame
-    local prLay = Instance.new("UIListLayout", pillRow)
-    prLay.FillDirection = Enum.FillDirection.Horizontal
-    prLay.SortOrder = Enum.SortOrder.LayoutOrder
-    prLay.Padding = UDim.new(0,6)
+    -- Спільний pillRow для всіх SubTabs цього Tab
+    if not self._pillRow then
+        local pillRow = Instance.new("Frame")
+        pillRow.Name = "PillRow"
+        pillRow.Size = UDim2.new(1,0,0,24)
+        pillRow.BackgroundTransparency = 1
+        pillRow.LayoutOrder = -1
+        pillRow.Parent = self._frame
+        local prLay = Instance.new("UIListLayout", pillRow)
+        prLay.FillDirection = Enum.FillDirection.Horizontal
+        prLay.SortOrder = Enum.SortOrder.LayoutOrder
+        prLay.Padding = UDim.new(0,6)
+        self._pillRow = pillRow
+    end
 
-    local pill = Instance.new("TextButton", pillRow)
+    local pill = Instance.new("TextButton", self._pillRow)
     pill.Text = name; pill.Font = Enum.Font.Cartoon; pill.TextSize = 12
     pill.TextColor3 = C.muted; pill.BackgroundColor3 = Color3.fromRGB(25,25,30)
     pill.Size = UDim2.new(0,0,0,24); pill.AutomaticSize = Enum.AutomaticSize.X
