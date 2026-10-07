@@ -289,7 +289,7 @@ local function ShowWelcomeSplash(opts)
     local splashGui = Instance.new("ScreenGui"); splashGui.Name = "SxntWelcome"
     splashGui.ResetOnSpawn = false; splashGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     splashGui.Parent = GetMainGui()
-    local card, cardStroke, cardGrad = createCenterCard(splashGui, 340, 270, 20)
+    local card, cardStroke, cardGrad, dotsHolder, dotsConn = createCenterCard(splashGui, 340, 270, 20)
     if IS_MOBILE then
         local vp = CurrentCamera.ViewportSize
         local s = math.min(1, (vp.X * 0.9) / 340, (vp.Y * 0.9) / 270)
