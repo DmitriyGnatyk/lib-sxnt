@@ -35,7 +35,7 @@ local THEMES = {
         bg = Color3.fromRGB(18,18,22), card = Color3.fromRGB(28,28,33), cardHover = Color3.fromRGB(35,35,42),
         accent = Color3.fromRGB(0,150,255), accent2 = Color3.fromRGB(120,80,255),
         green = Color3.fromRGB(50,210,120), text = Color3.fromRGB(225,225,235),
-        muted = Color3.fromRGB(90,90,115), border = Color3.fromRGB(45,45,55),
+        muted = Color3.fromRGB(118,118,146), border = Color3.fromRGB(45,45,58),
         red = Color3.fromRGB(255,65,65), telegram = Color3.fromRGB(88,101,242),
     },
     Purple = {
@@ -43,7 +43,7 @@ local THEMES = {
         bg = Color3.fromRGB(20,16,30), card = Color3.fromRGB(32,26,46), cardHover = Color3.fromRGB(40,32,56),
         accent = Color3.fromRGB(170,90,255), accent2 = Color3.fromRGB(255,90,200),
         green = Color3.fromRGB(50,210,120), text = Color3.fromRGB(235,225,245),
-        muted = Color3.fromRGB(120,105,145), border = Color3.fromRGB(55,45,75),
+        muted = Color3.fromRGB(140,124,170), border = Color3.fromRGB(58,47,82),
         red = Color3.fromRGB(255,65,65), telegram = Color3.fromRGB(88,101,242),
     },
     Crimson = {
@@ -78,8 +78,24 @@ local THEMES = {
         muted = Color3.fromRGB(140,105,120), border = Color3.fromRGB(60,40,55),
         red = Color3.fromRGB(255,65,65), telegram = Color3.fromRGB(88,101,242),
     },
+    Aurora = {
+        label = "Aurora",
+        bg = Color3.fromRGB(11,15,26), card = Color3.fromRGB(19,26,42), cardHover = Color3.fromRGB(26,35,56),
+        accent = Color3.fromRGB(0,226,200), accent2 = Color3.fromRGB(140,92,255),
+        green = Color3.fromRGB(50,210,120), text = Color3.fromRGB(226,238,248),
+        muted = Color3.fromRGB(112,134,160), border = Color3.fromRGB(36,50,76),
+        red = Color3.fromRGB(255,65,65), telegram = Color3.fromRGB(88,101,242),
+    },
+    Rose = {
+        label = "Rose",
+        bg = Color3.fromRGB(25,14,24), card = Color3.fromRGB(39,22,37), cardHover = Color3.fromRGB(50,29,47),
+        accent = Color3.fromRGB(255,108,170), accent2 = Color3.fromRGB(190,120,255),
+        green = Color3.fromRGB(50,210,120), text = Color3.fromRGB(248,228,240),
+        muted = Color3.fromRGB(158,118,146), border = Color3.fromRGB(66,40,62),
+        red = Color3.fromRGB(255,65,65), telegram = Color3.fromRGB(88,101,242),
+    },
 }
-local THEME_ORDER = {"Ice","Purple","Crimson","Toxic","Midnight","Sunset"}
+local THEME_ORDER = {"Ice","Purple","Crimson","Toxic","Midnight","Sunset","Aurora","Rose"}
 local function getTheme(name) return THEMES[name] or THEMES.Ice end
 
 -- Активна тема (змінне дзеркало; усі компоненти читають звідси)
@@ -113,6 +129,7 @@ local DEFAULT_L = {
         cleared = "Cleared",
         welcome_new = "Welcome", welcome_back = "Welcome back",
         loading = "Loading menu...", entering = "Entering...",
+        search = "Search...", none = "None", no_clipboard = "Clipboard unavailable",
     },
     UA = {
         copy = "Копіювати", copied = "Скопійовано!", lang = "Мова",
@@ -122,6 +139,7 @@ local DEFAULT_L = {
         cleared = "Очищено",
         welcome_new = "Вітаємо", welcome_back = "З поверненням",
         loading = "Завантаження меню...", entering = "Вхід...",
+        search = "Пошук...", none = "Немає", no_clipboard = "Буфер обміну недоступний",
     },
     TR = {
         copy = "Kopyala", copied = "Kopyalandı!", lang = "Dil",
@@ -131,6 +149,7 @@ local DEFAULT_L = {
         cleared = "Temizlendi",
         welcome_new = "Hoş geldin", welcome_back = "Tekrar hoş geldin",
         loading = "Menü yükleniyor...", entering = "Giriş...",
+        search = "Ara...", none = "Yok", no_clipboard = "Pano kullanılamıyor",
     },
     RUS = {
         copy = "Копировать", copied = "Скопировано!", lang = "Язык",
@@ -140,6 +159,7 @@ local DEFAULT_L = {
         cleared = "Очищено",
         welcome_new = "Добро пожаловать", welcome_back = "С возвращением",
         loading = "Загрузка меню...", entering = "Вход...",
+        search = "Поиск...", none = "Нет", no_clipboard = "Буфер обмена недоступен",
     },
 }
 local VALID_LANGS = { ENG = true, UA = true, TR = true, RUS = true }
@@ -379,7 +399,8 @@ local function ShowWelcomeSplash(opts)
     corner(card, 20)
     local cardStroke = stroke(card, Theme.accent, 1.5, 0.35)
     loopTween(cardStroke, 1.4, { Transparency = 0.75 })
-    gradient(card, Theme.card, Theme.bg, 135)
+    local cardBg = new("Frame", { Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 0 }, card)
+    gradient(cardBg, Theme.card, Theme.bg, 135)
     local cardScale = new("UIScale", { Scale = fit * 0.82 }, card)
 
     -- м'яке світіння зверху
@@ -482,7 +503,7 @@ end
 --  LIBRARY TABLE / PUBLIC API
 -- ═══════════════════════════════════════════════════════════
 local Library = {}
-Library.Version = "2.0"
+Library.Version = "3.0"
 Library.Themes = THEMES
 Library.ThemeOrder = THEME_ORDER
 Library.Defaults = { avatar = DEFAULT_AVATAR }
@@ -554,16 +575,22 @@ end
 -- Мова
 function Library:GetLanguage() return currentLang end
 function Library:SetLanguage(code)
-    if not VALID_LANGS[code] then return false end
+    if not VALID_LANGS[code] and not L[code] then return false end
     currentLang = code
     for _, win in ipairs(Library._windows) do
         if win and win._applyLanguage then pcall(win._applyLanguage) end
     end
     return true
 end
+-- v3: ДОДАЄ ключі до вбудованих (раніше повністю замінювало таблицю)
 function Library:RegisterTranslations(tbl)
     if type(tbl) ~= "table" then return end
-    L = tbl
+    for lang, map in pairs(tbl) do
+        if type(map) == "table" then
+            L[lang] = L[lang] or {}
+            for k, v in pairs(map) do L[lang][k] = v end
+        end
+    end
 end
 function Library:T(key) return T(key) end
 
@@ -588,7 +615,7 @@ local TAB_H, TAB_GAP = 36, 6
 -- ─── MAIN WINDOW ────────────────────────────────────────────
 function Library:CreateWindow(opts)
     opts = opts or {}
-    if opts.translations then L = opts.translations end
+    if opts.translations then Library:RegisterTranslations(opts.translations) end
     if opts.language and VALID_LANGS[opts.language] then currentLang = opts.language end
     if opts.theme and THEMES[opts.theme] then applyThemeToMirror(opts.theme) end
 
@@ -620,6 +647,8 @@ function Library:CreateWindow(opts)
     W._notifs = {}
     W._notifN = 0
     W._C = Theme
+    W._searchItems = {}
+    W._listening = false
 
     local conns = W._connections
     local function track(c) conns[#conns + 1] = c; return c end
@@ -673,8 +702,26 @@ function Library:CreateWindow(opts)
         end)
     end
 
+    -- ── опційний blur фону (поки меню відкрите) ──
+    local blurFx
+    local blurEnabled = opts.blur == true
+    local function applyBlur()
+        if blurEnabled and isOpen then
+            if not (blurFx and blurFx.Parent) then
+                blurFx = Instance.new("BlurEffect"); blurFx.Name = "SXNT_Blur"; blurFx.Size = 0
+                blurFx.Parent = game:GetService("Lighting")
+            end
+            tw(blurFx, 0.45, { Size = 16 }, ES.Quad)
+        elseif blurFx and blurFx.Parent then
+            tw(blurFx, 0.3, { Size = 0 }, ES.Quad)
+        end
+    end
+    W._setBlur = function(v) blurEnabled = v and true or false; applyBlur() end
+    W._getBlur = function() return blurEnabled end
+
     ui.Destroying:Connect(function()
         W._destroyed = true
+        if blurFx then pcall(function() blurFx:Destroy() end) end
         restoreMouse()
         for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
         table.clear(conns)
@@ -737,10 +784,29 @@ function Library:CreateWindow(opts)
         Position = UDim2.fromOffset(center.X, center.Y), BackgroundColor3 = Theme.bg,
         BorderSizePixel = 0, Visible = false, GroupTransparency = 1,
     }, ui)
-    corner(main, 16)
-    local mainStroke = stroke(main, Theme.border, 1.2)
+    corner(main, 18)
+    -- рамка з рухомим градієнтним відблиском (UIGradient на UIStroke не фарбує вміст)
+    local function borderSeq()
+        return ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Theme.accent),
+            ColorSequenceKeypoint.new(0.35, Theme.border),
+            ColorSequenceKeypoint.new(0.65, Theme.border),
+            ColorSequenceKeypoint.new(1, Theme.accent2),
+        })
+    end
+    local mainStroke = stroke(main, WHITE, 1.4, 0.2)
+    local mainStrokeGrad = new("UIGradient", { Color = borderSeq() }, mainStroke)
+    local borderSpin = spin(mainStrokeGrad, 9)
     local uiScale = new("UIScale", { Scale = baseScale }, main)
-    local mainGrad = gradient(main, Theme.bg:Lerp(Theme.accent, 0.07), Theme.bg, 135)
+    -- ВАЖЛИВО: градієнт фону лежить на ЗВИЧАЙНОМУ Frame. UIGradient прямо на CanvasGroup
+    -- множить усі діти на свої кольори, і все вікно ставало майже чорним.
+    local bgFill = new("Frame", { Name = "Bg", Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 0 }, main)
+    local mainGrad = gradient(bgFill, Theme.bg:Lerp(Theme.accent, 0.07), Theme.bg, 135)
+    local aurora = new("Frame", { Name = "Aurora", Size = UDim2.new(1, 0, 0, 150), BackgroundColor3 = Theme.accent, BorderSizePixel = 0, ZIndex = 0 }, main)
+    new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.8, 1) }, aurora)
+    loopTween(aurora, 4.5, { BackgroundTransparency = 0.3 })
+    local topGlow = new("Frame", { Name = "TopGlow", Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 1 }, main)
+    local topGlowGrad = gradient(topGlow, Theme.accent, Theme.accent2, 0)
     W.Main = main
     function W._scale() return uiScale.Scale end
 
@@ -749,7 +815,7 @@ function Library:CreateWindow(opts)
         BackgroundTransparency = 1, BorderSizePixel = 0, ZIndex = 0, ClipsDescendants = true,
     }, main)
     local function dotColor(i) return (i % 3 == 0) and Theme.accent2 or Theme.accent end
-    local dots = makeParticles(dotsBg, 28, dotColor)
+    local dots = makeParticles(dotsBg, 20, dotColor)
 
     -- відкриття / закриття
     function W:Open()
@@ -765,6 +831,14 @@ function Library:CreateWindow(opts)
         tw(main, 0.3, { GroupTransparency = 0 }, ES.Quad)
         tw(uiScale, 0.45, { Scale = baseScale }, ES.Back)
         forceMouse()
+        pcall(function() borderSpin:Play() end)
+        applyBlur()
+        for i, b in ipairs(W._tabButtons) do
+            b.TextTransparency = 1
+            task.delay(0.08 + i * 0.045, function()
+                if animTok == tok and b.Parent then tw(b, 0.35, { TextTransparency = 0 }, ES.Quad) end
+            end)
+        end
         if opts.onOpen then pcall(opts.onOpen) end
     end
     function W:Close()
@@ -774,11 +848,13 @@ function Library:CreateWindow(opts)
         if W._currentExpanded then pcall(W._currentExpanded) end
         restoreMouse()
         isOpen = false
+        applyBlur()
         tw(main, 0.22, { GroupTransparency = 1 }, ES.Quad, ED.In)
         tw(uiScale, 0.24, { Scale = baseScale * 0.92 }, ES.Quad, ED.In)
         task.delay(0.22, function()
             if animTok ~= tok or not main.Parent then return end
             main.Visible = false
+            pcall(function() borderSpin:Pause() end)
             if not hideIcon then
                 icon.Visible = true
                 iconScale.Scale = 0
@@ -874,6 +950,23 @@ function Library:CreateWindow(opts)
         Font = FONT_BOLD, Size = UDim2.fromOffset(150, 40), Position = UDim2.fromOffset(16, 3), ZIndex = 11,
     })
     local titleGrad = gradient(titleLbl, Theme.accent, Theme.accent2, 0)
+    local chip, chipStroke, chipLbl
+    if opts.version ~= false then
+        local vtxt = tostring(opts.version or ("V" .. Library.Version))
+        chip = new("Frame", {
+            Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X, Position = UDim2.fromOffset(60, 14),
+            BackgroundColor3 = Theme.accent, BackgroundTransparency = 0.82, BorderSizePixel = 0, ZIndex = 11,
+        }, titleBar)
+        corner(chip, 9)
+        chipStroke = stroke(chip, Theme.accent, 1, 0.55)
+        new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, chip)
+        chipLbl = label(chip, vtxt, 10, Theme.accent, {
+            Font = FONT_BOLD, Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 12,
+        })
+        local function placeChip() chip.Position = UDim2.fromOffset(16 + titleLbl.TextBounds.X + 8, 14) end
+        titleLbl:GetPropertyChangedSignal("TextBounds"):Connect(placeChip)
+        placeChip()
+    end
     makeDraggable(titleBar, function() return center end, setMainCenter, clampMain, nil)
 
     local profile = new("Frame", {
@@ -931,6 +1024,54 @@ function Library:CreateWindow(opts)
     local vertLine = new("Frame", {
         Size = UDim2.new(0, 1, 1, -60), Position = UDim2.fromOffset(172, 52), BackgroundColor3 = Theme.border, BorderSizePixel = 0,
     }, main)
+
+    vertLine.Visible = false
+    local sidePanel = new("Frame", {
+        Name = "Sidebar", Size = UDim2.new(0, 160, 1, -60), Position = UDim2.fromOffset(8, 52),
+        BackgroundColor3 = Theme.card, BackgroundTransparency = 0.45, BorderSizePixel = 0,
+    }, main)
+    corner(sidePanel, 14)
+    local sideStroke = stroke(sidePanel, Theme.border, 1, 0.35)
+
+    -- ── глобальний пошук по компонентах ──
+    local searchBox = new("Frame", {
+        Name = "Search", Size = UDim2.new(1, -374, 0, 28), Position = UDim2.fromOffset(176, 9),
+        BackgroundColor3 = Theme.card, BackgroundTransparency = 0.35, BorderSizePixel = 0, ZIndex = 11,
+    }, main)
+    corner(searchBox, 9)
+    local searchStroke = stroke(searchBox, Theme.border, 1, 0.2)
+    local searchIcon = label(searchBox, "🔍", 12, Theme.muted, {
+        Size = UDim2.fromOffset(26, 28), TextXAlignment = CENTER, ZIndex = 12,
+    })
+    local searchInput = new("TextBox", {
+        Text = "", PlaceholderText = T("search"), PlaceholderColor3 = Theme.muted, TextColor3 = Theme.text,
+        Font = FONT, TextSize = 12, ClearTextOnFocus = false, BackgroundTransparency = 1, BorderSizePixel = 0,
+        Size = UDim2.new(1, -32, 1, 0), Position = UDim2.fromOffset(26, 0), TextXAlignment = LEFT, ZIndex = 12,
+    }, searchBox)
+    local function applySearch()
+        local q = string.lower(searchInput.Text)
+        q = q:gsub("^%s+", ""); q = q:gsub("%s+$", "")
+        for _, it in ipairs(W._searchItems) do
+            if it.inst and it.inst.Parent then
+                local show
+                if q == "" then show = true
+                elseif it.section then show = false
+                else show = string.find(string.lower(tostring(it.name())), q, 1, true) ~= nil end
+                it.inst.Visible = show
+            end
+        end
+    end
+    searchInput:GetPropertyChangedSignal("Text"):Connect(applySearch)
+    searchInput.Focused:Connect(function()
+        tw(searchStroke, 0.2, { Color = Theme.accent, Transparency = 0 })
+        tw(searchBox, 0.2, { BackgroundTransparency = 0.1 })
+    end)
+    searchInput.FocusLost:Connect(function()
+        tw(searchStroke, 0.2, { Color = Theme.border, Transparency = 0.2 })
+        tw(searchBox, 0.2, { BackgroundTransparency = 0.35 })
+    end)
+    table.insert(W._textElements, { type = "custom", update = function() searchInput.PlaceholderText = T("search") end })
+    main:GetPropertyChangedSignal("Size"):Connect(function() searchBox.Visible = (winW - 374) >= 80 end)
 
     -- ── ручка зміни розміру (якір — верхній лівий кут) ──
     local grip = new("TextButton", {
@@ -1050,6 +1191,9 @@ function Library:CreateWindow(opts)
             })
         end
         interact(btn, st, render)
+        btn.InputBegan:Connect(function(i)
+            if isPress(i) then ripple(btn, inputScreenPos(i), Theme.accent, W._scale(), 9) end
+        end)
         W._tabRenders[index] = render
         onTheme(function() btn.BackgroundColor3 = Theme.card; render() end)
 
@@ -1107,7 +1251,7 @@ function Library:CreateWindow(opts)
     if not IS_MOBILE then
         W._menuKey = opts.menuKey or Enum.KeyCode.F4
         track(UserInputService.InputBegan:Connect(function(input, gp)
-            if gp then return end
+            if gp or W._listening then return end
             if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == W._menuKey then
                 W:Toggle()
             end
@@ -1140,9 +1284,21 @@ function Library:CreateWindow(opts)
 
     -- тема: живе перефарбування + (опційно) колбек для повної перебудови
     onTheme(function()
-        tw(mainStroke, 0.35, { Color = Theme.border })
+        mainStrokeGrad.Color = borderSeq()
         tw(main, 0.35, { BackgroundColor3 = Theme.bg })
+        tw(aurora, 0.4, { BackgroundColor3 = Theme.accent })
         setGrad(mainGrad, Theme.bg:Lerp(Theme.accent, 0.07), Theme.bg)
+        setGrad(topGlowGrad, Theme.accent, Theme.accent2)
+        tw(sidePanel, 0.35, { BackgroundColor3 = Theme.card })
+        tw(sideStroke, 0.35, { Color = Theme.border })
+        tw(searchBox, 0.35, { BackgroundColor3 = Theme.card })
+        tw(searchStroke, 0.35, { Color = Theme.border })
+        searchInput.TextColor3 = Theme.text; searchInput.PlaceholderColor3 = Theme.muted; searchIcon.TextColor3 = Theme.muted
+        if chip then
+            tw(chip, 0.35, { BackgroundColor3 = Theme.accent })
+            tw(chipStroke, 0.35, { Color = Theme.accent })
+            chipLbl.TextColor3 = Theme.accent
+        end
         setGrad(titleGrad, Theme.accent, Theme.accent2)
         setGrad(avatarRingGrad, Theme.accent, Theme.accent2)
         setGrad(tabIndGrad, Theme.accent, Theme.accent2)
@@ -1168,7 +1324,7 @@ function Library:CreateWindow(opts)
             end
         end
         for _, data in ipairs(W._tabData) do
-            data.btn.Text = data.icon .. "  " .. ((tbl and tbl[data.textKey]) or data.textKey)
+            data.btn.Text = data.icon .. "  " .. ((tbl and tbl[data.textKey]) or (L.ENG and L.ENG[data.textKey]) or data.displayText or data.textKey)
         end
     end
 
@@ -1391,6 +1547,22 @@ end
 -- ═══════════════════════════════════════════════════════════
 --  COMPONENT BUILDERS (спільні для SubTab і міні-елементів)
 -- ═══════════════════════════════════════════════════════════
+-- пошук: реєструємо хост компонента та функцію, що повертає його поточну назву
+local function nameOf(inst, fallback)
+    return function()
+        if inst:IsA("TextButton") and inst.Text ~= "" then return inst.Text end
+        local l = inst:FindFirstChildWhichIsA("TextLabel")
+        if l and l.Text ~= "" then return l.Text end
+        return fallback or ""
+    end
+end
+local function registerSearch(sub, inst, getName, isSection)
+    local win = sub._window
+    if win and win._searchItems then
+        win._searchItems[#win._searchItems + 1] = { inst = inst, name = getName or nameOf(inst), section = isSection }
+    end
+end
+
 local function regText(win, obj, key, fmt)
     if not key then return end
     table.insert(win._textElements, { type = "custom", update = function()
@@ -1453,18 +1625,29 @@ end
 local function buildToggle(win, parent, order, opts, compact)
     local flag = opts.flag
     local value = opts.default == true
-    local host, hostStroke = makeHost(parent, compact and 36 or 44, compact, order, true)
+    local hasDesc = (not compact) and opts.desc ~= nil
+    local host, hostStroke = makeHost(parent, compact and 36 or (hasDesc and 56 or 44), compact, order, true)
     local lbl = label(host, opts.name or (opts.key and T(opts.key)) or flag or "Toggle", compact and 12 or 13, Theme.text, {
-        Position = UDim2.fromOffset(compact and 10 or 14, 0), Size = UDim2.new(1, -70, 1, 0),
+        Position = UDim2.fromOffset(compact and 10 or 14, hasDesc and 9 or 0),
+        Size = hasDesc and UDim2.new(1, -70, 0, 18) or UDim2.new(1, -70, 1, 0),
         TextTruncate = Enum.TextTruncate.AtEnd,
     })
     regText(win, lbl, opts.key)
+    local descLbl
+    if hasDesc then
+        descLbl = label(host, tostring(opts.desc), 11, Theme.muted, {
+            Position = UDim2.fromOffset(14, 28), Size = UDim2.new(1, -70, 0, 18), TextTruncate = Enum.TextTruncate.AtEnd,
+        })
+    end
     local sw = makeSwitch(host, compact, value)
 
     local state = { hover = false, down = false }
     local function render(animate) styleHost(host, hostStroke, compact, state, animate) end
     interact(host, state, render)
-    win._onTheme(function() render(true); sw.render(true); lbl.TextColor3 = Theme.text end)
+    win._onTheme(function()
+        render(true); sw.render(true); lbl.TextColor3 = Theme.text
+        if descLbl then descLbl.TextColor3 = Theme.muted end
+    end)
 
     local function apply(v) value = v; sw.value = v; sw.render(true) end
     local function fire(v) if opts.callback then pcall(opts.callback, v) end end
@@ -1625,8 +1808,21 @@ local function buildButton(win, parent, order, opts, compact)
     local radius = compact and 7 or 10
     corner(btn, radius)
     local btnStroke = (not compact and not primary) and stroke(btn, Theme.border, 1) or nil
-    local grad = primary and gradient(btn, Theme.accent, Theme.accent2, 0) or nil
-    btn.Parent = parent
+    local grad, fillFrame
+    if primary then
+        -- UIGradient на TextButton фарбує ще й текст → градієнт лежить на Frame ПОЗАДУ кнопки
+        local holder = new("Frame", { Size = UDim2.new(1, 0, 0, h), BackgroundTransparency = 1, BorderSizePixel = 0, LayoutOrder = order })
+        fillFrame = new("Frame", {
+            Size = UDim2.fromScale(1, 1), BackgroundColor3 = Color3.fromRGB(238, 238, 238), BorderSizePixel = 0, ZIndex = 1,
+        }, holder)
+        corner(fillFrame, radius)
+        grad = gradient(fillFrame, Theme.accent, Theme.accent2, 0)
+        btn.Size = UDim2.fromScale(1, 1); btn.BackgroundTransparency = 1; btn.ZIndex = 2
+        holder.Parent = parent
+        btn.Parent = holder
+    else
+        btn.Parent = parent
+    end
     regText(win, btn, opts.key)
 
     local state = { hover = false, down = false }
@@ -1634,7 +1830,8 @@ local function buildButton(win, parent, order, opts, compact)
         local dur = animate and 0.18 or 0
         if primary then
             local g = state.down and 200 or (state.hover and 255 or 238)
-            tw(btn, dur, { BackgroundColor3 = Color3.fromRGB(g, g, g), TextColor3 = Theme.onAccent })
+            tw(fillFrame, dur, { BackgroundColor3 = Color3.fromRGB(g, g, g) })
+            tw(btn, dur, { TextColor3 = Theme.onAccent })
         else
             local base = compact and Theme.card2 or Theme.card
             local hov = compact and base:Lerp(WHITE, 0.07) or Theme.cardHover
@@ -1819,6 +2016,7 @@ function SubTab:AddSection(text, key)
     place()
     win._onTheme(function() s.TextColor3 = Theme.accent; line.BackgroundColor3 = Theme.border end)
     regText(win, s, key)
+    registerSearch(self, s, nil, true)
     return s
 end
 
@@ -1830,20 +2028,25 @@ function SubTab:AddLabel(text)
     })
     new("UIPadding", { PaddingTop = UDim.new(0, 2), PaddingBottom = UDim.new(0, 2), PaddingLeft = UDim.new(0, 2) }, l)
     win._onTheme(function() l.TextColor3 = Theme.text end)
+    registerSearch(self, l, nil, true)
     return l
 end
 
 function SubTab:AddButton(opts)
-    return buildButton(self._window, self._container, self._LO(), opts or {}, false)
+    local b = buildButton(self._window, self._container, self._LO(), opts or {}, false)
+    registerSearch(self, (b.Parent ~= self._container) and b.Parent or b, nameOf(b))
+    return b
 end
 
 function SubTab:AddToggle(opts)
     local host, api = buildToggle(self._window, self._container, self._LO(), opts or {}, false)
+    registerSearch(self, host)
     return host, api
 end
 
 function SubTab:AddSlider(opts)
-    local hit, api = buildSlider(self._window, self._container, self._LO(), opts or {}, false)
+    local hit, api, host = buildSlider(self._window, self._container, self._LO(), opts or {}, false)
+    registerSearch(self, host)
     return hit, api
 end
 
@@ -2019,6 +2222,7 @@ function SubTab:AddDropdown(opts)
     if flag then
         Library:RegisterFlag(flag, function() return value end, function(v) api.Set(nil, v) end, value)
     end
+    registerSearch(self, frame)
     return api
 end
 
@@ -2029,6 +2233,7 @@ function SubTab:AddExpandableCard(opts)
     opts = opts or {}
     local win = self._window
     local c = buildCollapsible(win, self._container, self._LO(), opts, false, nil)
+    registerSearch(self, c.frame, nameOf(c.frame, opts.name or opts.flag or ""))
     local cardObj = setmetatable({
         _card = c.frame, _holder = c.holder, _list = c.list, _group = c.group, _win = win,
         _C = Theme, _tw = tw, _corner = corner, _stroke = stroke, _isOpen = c.get(),
@@ -2070,5 +2275,509 @@ function ExpandableCard:AddMiniSwitch(opts) return addMiniSwitch(self._win, self
 function ExpandableCard:AddMiniSlider(opts) return addMiniSlider(self._win, self._group, opts) end
 function ExpandableCard:AddMiniButton(opts) return addMiniButton(self._win, self._group, opts) end
 function ExpandableCard:AddMiniExpandable(opts) return addMiniExpandable(self._win, self._group, opts) end
+
+-- ═══════════════════════════════════════════════════════════
+--  v3: НОВІ КОМПОНЕНТИ
+-- ═══════════════════════════════════════════════════════════
+local function copyText(s)
+    local f = (typeof(setclipboard) == "function" and setclipboard) or (typeof(toclipboard) == "function" and toclipboard) or nil
+    if not f then return false end
+    return (pcall(f, tostring(s)))
+end
+Library.Copy = copyText
+
+local function keyFromName(v)
+    if typeof(v) == "EnumItem" then return v end
+    if type(v) ~= "string" or v == "" or v == "None" then return nil end
+    local ok, k = pcall(function() return Enum.KeyCode[v] end)
+    return ok and k or nil
+end
+
+function SubTab:AddDivider()
+    local line = new("Frame", {
+        Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.border, BorderSizePixel = 0, LayoutOrder = self._LO(),
+    }, self._container)
+    new("UIGradient", { Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.2, 0.2),
+        NumberSequenceKeypoint.new(0.8, 0.2), NumberSequenceKeypoint.new(1, 1),
+    }) }, line)
+    self._window._onTheme(function() line.BackgroundColor3 = Theme.border end)
+    registerSearch(self, line, nil, true)
+    return line
+end
+
+-- Keybind: клік → «...» → натисни клавішу (Esc скасує, Backspace очистить)
+function SubTab:AddKeybind(opts)
+    opts = opts or {}
+    local win = self._window
+    local flag = opts.flag
+    local key = keyFromName(opts.default)
+    local host, hostStroke = makeHost(self._container, 44, false, self._LO(), false)
+    local lbl = label(host, opts.name or (opts.key and T(opts.key)) or flag or "Keybind", 13, Theme.text, {
+        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -130, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    regText(win, lbl, opts.key)
+    local btn = new("TextButton", {
+        Text = "", Size = UDim2.fromOffset(100, 28), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0),
+        BackgroundColor3 = Theme.card2, BorderSizePixel = 0, AutoButtonColor = false,
+    }, host)
+    corner(btn, 8)
+    local btnStroke = stroke(btn, Theme.border, 1)
+    local keyLbl = label(btn, "", 12, Theme.text, { Font = FONT_BOLD, Size = UDim2.fromScale(1, 1), TextXAlignment = CENTER })
+    local listening = false
+
+    local function render()
+        keyLbl.Text = listening and "..." or (key and key.Name or T("none"))
+        tw(keyLbl, 0.15, { TextColor3 = listening and Theme.accent or (key and Theme.text or Theme.muted) })
+        tw(btnStroke, 0.18, { Color = listening and Theme.accent or Theme.border })
+    end
+    local function stopListening()
+        listening = false
+        task.defer(function() win._listening = false end)
+    end
+    local function setKey(k, fire)
+        key = k; stopListening(); render()
+        Library:_commit(flag, key and key.Name or "None")
+        if fire and opts.callback then pcall(opts.callback, k) end
+    end
+
+    local state = { hover = false, down = false }
+    interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
+    btn.MouseButton1Click:Connect(function()
+        listening = not listening
+        win._listening = listening
+        render()
+    end)
+    win._track(UserInputService.InputBegan:Connect(function(input, gp)
+        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
+        if listening then
+            if input.KeyCode == Enum.KeyCode.Escape then stopListening(); render()
+            elseif input.KeyCode == Enum.KeyCode.Backspace then setKey(nil, true)
+            else setKey(input.KeyCode, true) end
+            return
+        end
+        if key and not gp and input.KeyCode == key and opts.onPress then pcall(opts.onPress) end
+    end))
+    win._onTheme(function()
+        lbl.TextColor3 = Theme.text
+        tw(btn, 0.3, { BackgroundColor3 = Theme.card2 })
+        render()
+    end)
+    render()
+
+    local api = {}
+    function api.Get() return key end
+    function api.Set(_, k) setKey(keyFromName(k), false) end
+    if flag then
+        Library:RegisterFlag(flag, function() return key and key.Name or "None" end,
+            function(v) setKey(keyFromName(v), true) end, key and key.Name or "None")
+    end
+    registerSearch(self, host)
+    return host, api
+end
+
+-- Textbox: Enter / втрата фокусу = застосувати значення
+function SubTab:AddTextbox(opts)
+    opts = opts or {}
+    local win = self._window
+    local flag = opts.flag
+    local value = tostring(opts.default or "")
+    local host, hostStroke = makeHost(self._container, 44, false, self._LO(), false)
+    local lbl = label(host, opts.name or (opts.key and T(opts.key)) or flag or "Textbox", 13, Theme.text, {
+        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(0.4, -14, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    regText(win, lbl, opts.key)
+    local boxWrap = new("Frame", {
+        Size = UDim2.new(0.6, -18, 0, 30), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0),
+        BackgroundColor3 = Theme.card2, BorderSizePixel = 0,
+    }, host)
+    corner(boxWrap, 8)
+    local boxStroke = stroke(boxWrap, Theme.border, 1)
+    local input = new("TextBox", {
+        Text = value, PlaceholderText = tostring(opts.placeholder or ""), PlaceholderColor3 = Theme.muted,
+        TextColor3 = Theme.text, Font = FONT, TextSize = 12, ClearTextOnFocus = false, BackgroundTransparency = 1,
+        BorderSizePixel = 0, Size = UDim2.new(1, -20, 1, 0), Position = UDim2.fromOffset(10, 0),
+        TextXAlignment = LEFT, TextTruncate = Enum.TextTruncate.AtEnd,
+    }, boxWrap)
+
+    local state = { hover = false, down = false }
+    interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
+    input.Focused:Connect(function() tw(boxStroke, 0.2, { Color = Theme.accent }) end)
+    local function commit(enter)
+        tw(boxStroke, 0.2, { Color = Theme.border })
+        local v = input.Text
+        if opts.numeric then v = v:gsub("[^%d%.%-]", "") end
+        input.Text = v
+        value = v
+        Library:_commit(flag, v)
+        if opts.callback then pcall(opts.callback, v, enter) end
+    end
+    input.FocusLost:Connect(commit)
+    win._onTheme(function()
+        lbl.TextColor3 = Theme.text; input.TextColor3 = Theme.text; input.PlaceholderColor3 = Theme.muted
+        tw(boxWrap, 0.3, { BackgroundColor3 = Theme.card2 }); tw(boxStroke, 0.3, { Color = Theme.border })
+    end)
+
+    local api = {}
+    function api.Get() return value end
+    function api.Set(_, v) value = tostring(v or ""); input.Text = value; if opts.callback then pcall(opts.callback, value, false) end end
+    if flag then
+        Library:RegisterFlag(flag, function() return value end, function(v) api.Set(nil, v) end, value)
+    end
+    registerSearch(self, host)
+    return host, api
+end
+
+-- InfoRow: «назва … значення», клік копіює (copyValue або value)
+function SubTab:AddInfoRow(opts)
+    opts = opts or {}
+    local win = self._window
+    local value = tostring(opts.value or "")
+    local copyable = opts.copy ~= false
+    local host, hostStroke = makeHost(self._container, 40, false, self._LO(), true)
+    local lbl = label(host, opts.name or (opts.key and T(opts.key)) or "Info", 12, Theme.muted, {
+        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(0.4, -14, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    regText(win, lbl, opts.key)
+    local valLbl = label(host, value, 13, opts.color or Theme.text, {
+        Font = FONT_BOLD, AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -14, 0, 0),
+        Size = UDim2.new(0.6, -14, 1, 0), TextXAlignment = RIGHT, TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    local dot = new("Frame", {
+        Size = UDim2.fromOffset(8, 8), AnchorPoint = Vector2.new(1, 0.5), BackgroundColor3 = opts.dot or Theme.green,
+        BorderSizePixel = 0, Visible = opts.dot ~= nil,
+    }, host)
+    corner(dot, 999)
+    local dotPulse = loopTween(dot, 1.1, { BackgroundTransparency = 0.55 })
+    local colorFn = nil
+    local function placeDot()
+        dot.Position = UDim2.new(1, -(14 + valLbl.TextBounds.X + 10), 0.5, 0)
+    end
+    valLbl:GetPropertyChangedSignal("TextBounds"):Connect(placeDot)
+    placeDot()
+
+    local state = { hover = false, down = false }
+    interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
+    host.InputBegan:Connect(function(i)
+        if copyable and isPress(i) then ripple(host, inputScreenPos(i), Theme.accent, win._scale(), 10) end
+    end)
+    host.MouseButton1Click:Connect(function()
+        if not copyable then return end
+        local cv = opts.copyValue
+        if type(cv) == "function" then local ok, r = pcall(cv); cv = ok and r or nil end
+        cv = tostring(cv or value)
+        if copyText(cv) then
+            win:Notify({ title = T("copied"), content = cv:sub(1, 48), type = "success", duration = 2 })
+        else
+            win:Notify({ title = T("no_clipboard"), type = "warning", duration = 2.5 })
+        end
+    end)
+    win._onTheme(function()
+        lbl.TextColor3 = Theme.muted
+        if not opts.color then valLbl.TextColor3 = Theme.text end
+        if colorFn then valLbl.TextColor3 = colorFn() end
+    end)
+
+    local api = {}
+    function api.Get() return value end
+    function api.Set(_, v, color)
+        value = tostring(v or ""); valLbl.Text = value
+        if color then valLbl.TextColor3 = color end
+    end
+    function api.SetColor(_, c) valLbl.TextColor3 = c end
+    function api.SetDot(_, c)
+        if c then dot.BackgroundColor3 = c; dot.Visible = true else dot.Visible = false end
+        placeDot()
+    end
+    registerSearch(self, host, function() return lbl.Text .. " " .. value end)
+    return host, api
+end
+
+-- ProfileCard: аватар з обертовим кільцем, ім'я, @нік, ID (клік копіює), бейдж
+function SubTab:AddProfileCard(opts)
+    opts = opts or {}
+    local win = self._window
+    local userId = opts.userId or LocalPlayer.UserId
+    local dname = opts.name or ((LocalPlayer.DisplayName ~= "" and LocalPlayer.DisplayName) or LocalPlayer.Name)
+    local uname = opts.username or ("@" .. LocalPlayer.Name)
+    local host = makeHost(self._container, 82, false, self._LO(), false)
+    host.ClipsDescendants = true
+    local topBar = new("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, host)
+    local topGrad = gradient(topBar, Theme.accent, Theme.accent2, 0)
+
+    local ring = new("Frame", { Size = UDim2.fromOffset(58, 58), Position = UDim2.fromOffset(14, 12), BackgroundTransparency = 1 }, host)
+    corner(ring, 999)
+    local ringStroke = stroke(ring, WHITE, 2, 0.05)
+    local ringGrad = gradient(ringStroke, Theme.accent, Theme.accent2, 0)
+    spin(ringGrad, 4)
+    local init = label(host, dname:sub(1, 1):upper(), 20, WHITE, {
+        Font = FONT_BOLD, Size = UDim2.fromOffset(48, 48), Position = UDim2.fromOffset(19, 17),
+        BackgroundTransparency = 0, BackgroundColor3 = Theme.accent, TextXAlignment = CENTER,
+    })
+    corner(init, 999)
+    local img = new("ImageLabel", {
+        Size = UDim2.fromOffset(48, 48), Position = UDim2.fromOffset(19, 17), BackgroundTransparency = 1, ZIndex = 2,
+    }, host)
+    corner(img, 999)
+    if opts.avatar then img.Image = opts.avatar
+    else
+        task.spawn(function()
+            local ok, url = pcall(function()
+                return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+            end)
+            if ok and img.Parent then img.Image = url end
+        end)
+    end
+    local nameLbl = label(host, dname, 15, Theme.text, {
+        Font = FONT_BOLD, Position = UDim2.fromOffset(84, 12), Size = UDim2.new(1, -190, 0, 20), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    local userLbl = label(host, uname, 12, Theme.muted, {
+        Position = UDim2.fromOffset(84, 32), Size = UDim2.new(1, -190, 0, 16), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    local idBtn = new("TextButton", {
+        Text = "ID  " .. tostring(userId), Font = FONT, TextSize = 11, TextColor3 = Theme.muted,
+        Position = UDim2.fromOffset(84, 54), Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X,
+        BackgroundColor3 = Theme.card2, BorderSizePixel = 0, AutoButtonColor = false,
+    }, host)
+    corner(idBtn, 6)
+    new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, idBtn)
+    local idState = { hover = false, down = false }
+    interact(idBtn, idState, function() tw(idBtn, 0.15, { TextColor3 = idState.hover and Theme.accent or Theme.muted }) end)
+    idBtn.MouseButton1Click:Connect(function()
+        if copyText(userId) then win:Notify({ title = T("copied"), content = tostring(userId), type = "success", duration = 2 }) end
+    end)
+
+    local badge, badgeLbl, badgeStroke
+    local function makeBadge(text, color)
+        if not badge then
+            badge = new("Frame", {
+                Size = UDim2.fromOffset(0, 22), AutomaticSize = Enum.AutomaticSize.X, AnchorPoint = Vector2.new(1, 0),
+                Position = UDim2.new(1, -14, 0, 14), BackgroundTransparency = 0.8, BorderSizePixel = 0,
+            }, host)
+            corner(badge, 11)
+            badgeStroke = stroke(badge, WHITE, 1, 0.5)
+            new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, badge)
+            badgeLbl = label(badge, "", 10, WHITE, {
+                Font = FONT_BOLD, Size = UDim2.fromOffset(0, 22), AutomaticSize = Enum.AutomaticSize.X,
+            })
+        end
+        badgeLbl.Text = tostring(text)
+        local c = color or Theme.accent
+        badge.BackgroundColor3 = c; badgeStroke.Color = c; badgeLbl.TextColor3 = c
+    end
+    local badgeColor = opts.badgeColor
+    if opts.badge then makeBadge(opts.badge, badgeColor) end
+
+    win._onTheme(function()
+        setGrad(topGrad, Theme.accent, Theme.accent2); setGrad(ringGrad, Theme.accent, Theme.accent2)
+        init.BackgroundColor3 = Theme.accent
+        nameLbl.TextColor3 = Theme.text; userLbl.TextColor3 = Theme.muted
+        tw(idBtn, 0.3, { BackgroundColor3 = Theme.card2 })
+        if badge and not badgeColor then makeBadge(badgeLbl.Text) end
+    end)
+
+    local api = {}
+    function api.SetName(_, v) nameLbl.Text = tostring(v) end
+    function api.SetUsername(_, v) userLbl.Text = tostring(v) end
+    function api.SetBadge(_, text, color) badgeColor = color; makeBadge(text, color) end
+    registerSearch(self, host, function() return nameLbl.Text .. " " .. userLbl.Text end)
+    return host, api
+end
+
+-- Stats: ряд плиток «велике число + підпис» (напр. онлайн, пінг, аптайм)
+function SubTab:AddStats(list)
+    local win = self._window
+    list = list or {}
+    local n = math.max(#list, 1)
+    local holder = new("Frame", { Size = UDim2.new(1, 0, 0, 62), BackgroundTransparency = 1, LayoutOrder = self._LO() }, self._container)
+    new("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal, SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8),
+    }, holder)
+    local apis = {}
+    for i, it in ipairs(list) do
+        local tile = new("Frame", {
+            Size = UDim2.new(1 / n, -(8 * (n - 1)) / n, 1, 0), BackgroundColor3 = Theme.card, BorderSizePixel = 0, LayoutOrder = i,
+        }, holder)
+        corner(tile, 10)
+        local tileStroke = stroke(tile, Theme.border, 1)
+        local val = label(tile, tostring(it.value or "0"), 20, it.color or Theme.accent, {
+            Font = FONT_BOLD, Size = UDim2.new(1, 0, 0, 28), Position = UDim2.fromOffset(0, 8), TextXAlignment = CENTER,
+        })
+        local cap = label(tile, tostring(it.name or (it.key and T(it.key)) or ""), 11, Theme.muted, {
+            Size = UDim2.new(1, -8, 0, 16), Position = UDim2.fromOffset(4, 38), TextXAlignment = CENTER, TextTruncate = Enum.TextTruncate.AtEnd,
+        })
+        regText(win, cap, it.key)
+        win._onTheme(function()
+            tw(tile, 0.3, { BackgroundColor3 = Theme.card }); tw(tileStroke, 0.3, { Color = Theme.border })
+            cap.TextColor3 = Theme.muted
+            if not it.color then val.TextColor3 = Theme.accent end
+        end)
+        local api = {}
+        function api.Get() return val.Text end
+        function api.Set(_, v)
+            val.Text = tostring(v)
+            tw(val, 0.12, { TextSize = 25 }, ES.Quad)
+            task.delay(0.12, function() if val.Parent then tw(val, 0.25, { TextSize = 20 }, ES.Back) end end)
+        end
+        function api.SetColor(_, c) val.TextColor3 = c end
+        apis[i] = api
+    end
+    registerSearch(self, holder, nil, true)
+    return apis
+end
+
+-- ═══════════════════════════════════════════════════════════
+--  v3: ВОДЯНИЙ ЗНАК, BLUR
+-- ═══════════════════════════════════════════════════════════
+function Window:AddWatermark(opts)
+    opts = opts or {}
+    local ui = self.ScreenGui
+    if not ui or not ui.Parent then return end
+    if self._watermark then pcall(function() self._watermark.Frame:Destroy() end) end
+    local brand = tostring(opts.text or "SXNT")
+    local showFps, showPing = opts.showFps ~= false, opts.showPing ~= false
+
+    local frame = new("Frame", {
+        Name = "Watermark", Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(0, 28),
+        AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Theme.bg, BackgroundTransparency = 0.12,
+        BorderSizePixel = 0, ZIndex = 400, Visible = opts.visible ~= false,
+    }, ui)
+    corner(frame, 10)
+    local st = stroke(frame, WHITE, 1.2, 0.25)
+    local sg = gradient(st, Theme.accent, Theme.accent2, 0)
+    new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, frame)
+    local lbl = label(frame, "", 12, Theme.text, {
+        Font = FONT_BOLD, Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 401, RichText = true,
+    })
+    local fps, ping = 0, nil
+    local function refresh()
+        local a, m = Theme.accent:ToHex(), Theme.muted:ToHex()
+        local txt = string.format('<font color="#%s">%s</font>', a, brand)
+        if showFps then txt ..= string.format('  <font color="#%s">|</font>  %d fps', m, fps) end
+        if showPing and ping then txt ..= string.format('  <font color="#%s">|</font>  %d ms', m, ping) end
+        lbl.Text = txt
+    end
+    local acc, frames = 0, 0
+    self._track(RunService.Heartbeat:Connect(function(dt)
+        acc += dt; frames += 1
+        if acc >= 0.5 then
+            fps = math.floor(frames / acc + 0.5); frames = 0; acc = 0
+            local ok, v = pcall(function()
+                return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
+            end)
+            ping = ok and v or nil
+            if frame.Visible then refresh() end
+        end
+    end))
+    refresh()
+    self._onTheme(function()
+        setGrad(sg, Theme.accent, Theme.accent2); tw(frame, 0.3, { BackgroundColor3 = Theme.bg }); refresh()
+    end)
+    local api = { Frame = frame }
+    function api.SetVisible(_, v) frame.Visible = v and true or false; if v then refresh() end end
+    self._watermark = api
+    return api
+end
+function Window:SetWatermark(v, opts)
+    if v then
+        if self._watermark and self._watermark.Frame.Parent then self._watermark:SetVisible(true)
+        else self:AddWatermark(opts) end
+    elseif self._watermark then
+        self._watermark:SetVisible(false)
+    end
+end
+function Window:IsWatermarkVisible() return self._watermark ~= nil and self._watermark.Frame.Visible end
+function Window:SetBlur(v) if self._setBlur then self._setBlur(v) end end
+function Window:GetBlur() return self._getBlur and self._getBlur() or false end
+
+-- ═══════════════════════════════════════════════════════════
+--  v3: КОНФІГИ (потрібен executor з writefile / readfile)
+-- ═══════════════════════════════════════════════════════════
+local HttpService = game:GetService("HttpService")
+Library.ConfigFolder = "SXNT"
+Library.ConfigIgnore = {}      -- [flag] = true — не зберігати цей прапор
+
+local function fsAvailable()
+    return typeof(writefile) == "function" and typeof(readfile) == "function" and typeof(isfile) == "function"
+end
+local function cfgName(name) return (tostring(name or ""):gsub("[^%w_%-]", "")) end
+local function cfgPath(name) return Library.ConfigFolder .. "/" .. cfgName(name) .. ".json" end
+local function ensureFolder()
+    if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
+        pcall(function() if not isfolder(Library.ConfigFolder) then makefolder(Library.ConfigFolder) end end)
+    end
+end
+
+function Library:ExportConfig()
+    local out = {}
+    for name in pairs(Flags) do
+        if not Library.ConfigIgnore[name] then
+            local v = Library:GetFlag(name)
+            local t = typeof(v)
+            if t == "boolean" or t == "number" or t == "string" then out[name] = v end
+        end
+    end
+    return out
+end
+function Library:ImportConfig(tbl)
+    if type(tbl) ~= "table" then return 0 end
+    local n = 0
+    for name, v in pairs(tbl) do
+        if Flags[name] and not Library.ConfigIgnore[name] then Library:SetFlag(name, v); n += 1 end
+    end
+    return n
+end
+function Library:SaveConfig(name)
+    if cfgName(name) == "" then return false, "empty name" end
+    if not fsAvailable() then return false, "filesystem unavailable" end
+    ensureFolder()
+    local ok, err = pcall(function() writefile(cfgPath(name), HttpService:JSONEncode(Library:ExportConfig())) end)
+    return ok, (not ok) and tostring(err) or nil
+end
+function Library:LoadConfig(name)
+    if cfgName(name) == "" then return false, "empty name" end
+    if not fsAvailable() then return false, "filesystem unavailable" end
+    local okE, exists = pcall(isfile, cfgPath(name))
+    if not (okE and exists) then return false, "not found" end
+    local ok, data = pcall(function() return HttpService:JSONDecode(readfile(cfgPath(name))) end)
+    if not ok then return false, "bad json" end
+    return true, Library:ImportConfig(data)
+end
+function Library:ListConfigs()
+    local out = {}
+    if typeof(listfiles) ~= "function" then return out end
+    ensureFolder()
+    local ok, files = pcall(listfiles, Library.ConfigFolder)
+    if not ok or type(files) ~= "table" then return out end
+    for _, path in ipairs(files) do
+        local n = tostring(path):match("([^/\\]+)%.json$")
+        if n then out[#out + 1] = n end
+    end
+    table.sort(out)
+    return out
+end
+function Library:DeleteConfig(name)
+    if typeof(delfile) ~= "function" or cfgName(name) == "" then return false end
+    return (pcall(delfile, cfgPath(name)))
+end
+function Library:SetAutoload(name)
+    if not fsAvailable() then return false end
+    ensureFolder()
+    return (pcall(writefile, Library.ConfigFolder .. "/autoload.txt", cfgName(name)))
+end
+function Library:GetAutoload()
+    if not fsAvailable() then return nil end
+    local p = Library.ConfigFolder .. "/autoload.txt"
+    local okE, exists = pcall(isfile, p)
+    if not (okE and exists) then return nil end
+    local ok, v = pcall(readfile, p)
+    v = ok and cfgName(v) or ""
+    return v ~= "" and v or nil
+end
+function Library:AutoLoad()
+    local n = Library:GetAutoload()
+    if n then return Library:LoadConfig(n) end
+    return false, "no autoload"
+end
 
 return Library
