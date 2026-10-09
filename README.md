@@ -1,8 +1,19 @@
-# SXNT UI Library v2.0
+# SXNT UI Library v3.0 · Premium
 
 Бібліотека меню для Roblox (Luau): вікно з вкладками, під-вкладками, toggle, slider, dropdown, кнопками, розгортними картками, сповіщеннями, темами та мультимовністю. Усе анімоване (hover, ripple, ковзні індикатори, плавні відкриття та закриття).
 
-> Версія 2.0 повністю сумісна за API з 1.x. Старі скрипти працюють без змін.
+> Версія 3.0 повністю сумісна за API з 1.x і 2.x. Старі скрипти працюють без змін.
+
+### Що нового у 3.0
+
+- **Виправлено «чорне» вікно.** `UIGradient` на `CanvasGroup` множить усіх дітей на свої кольори, тому все меню ставало майже чорним. Тепер градієнти лежать на окремих `Frame` (вікно, вітальна заставка, primary-кнопки).
+- **Преміум-вигляд:** рухома градієнтна рамка, ambient-світіння зверху, панель сайдбару, бейдж версії, ripple на вкладках, поетапна поява вкладок.
+- **Глобальний пошук** по компонентах (поле у шапці).
+- **Нові компоненти:** `AddKeybind`, `AddTextbox`, `AddInfoRow`, `AddProfileCard`, `AddStats`, `AddDivider`, опція `desc` у toggle.
+- **Конфіги:** збереження, завантаження, список, видалення, автозавантаження.
+- **Водяний знак** (FPS / ping) і опційний **blur** фону.
+- **Нові теми:** `Aurora`, `Rose`. Читабельніший `muted`-колір у `Ice` і `Purple`.
+- `RegisterTranslations` тепер **додає** ключі до вбудованих, а не замінює таблицю. Додано ключі `search`, `none`, `no_clipboard`.
 
 ---
 
@@ -89,7 +100,14 @@ Window:Open()
 | `Library:T(key)` | Повертає переклад ключа для поточної мови. |
 | `Library:ShowWelcome(opts)` | Показує вітальну заставку. |
 | `Library:Unload()` | Знищує всі вікна цієї бібліотеки. |
-| `Library.Version` | `"2.0"` |
+| `Library.Version` | `"3.0"` |
+| `Library.Copy(text)` | Копіює в буфер обміну (якщо executor дозволяє), повертає `true/false`. |
+| `Library:ExportConfig()` / `ImportConfig(tbl)` | Таблиця прапорів (bool / number / string) і її застосування. |
+| `Library:SaveConfig(name)` / `LoadConfig(name)` | Збереження й завантаження JSON у `Library.ConfigFolder`. Повертають `ok, errOrCount`. |
+| `Library:ListConfigs()` / `DeleteConfig(name)` | Список збережених конфігів / видалення. |
+| `Library:SetAutoload(name)` / `GetAutoload()` / `AutoLoad()` | Конфіг, що застосовується при запуску. |
+| `Library.ConfigFolder` | Папка конфігів (`"SXNT"`). |
+| `Library.ConfigIgnore` | `[flag] = true`, щоб не зберігати прапор у конфіг. |
 | `Library.Themes` | Таблиця всіх тем. |
 | `Library.ThemeOrder` | Масив назв тем (для dropdown-ів). |
 | `Library.Defaults` | `{ avatar = "rbxassetid://..." }` |
@@ -107,6 +125,8 @@ Window:Open()
 | `soundVolume` | number | `1.2` | Гучність клік-звуків (`0` вимикає). |
 | `menuKey` | `Enum.KeyCode` | `F4` | Клавіша відкриття (не на мобільних). |
 | `displayOrder` | number | `100` | `DisplayOrder` ScreenGui. |
+| `version` | string / `false` | `"V3.0"` | Текст бейджа біля заголовка. `false` ховає бейдж. |
+| `blur` | boolean | `false` | Розмиття гри під меню, поки воно відкрите. |
 | `lockMouseOnClose` | boolean | `false` | Якщо `true`, при закритті меню миша завжди переходить у `LockCenter` (поведінка v1). Інакше відновлюється стан, який був до відкриття. |
 | `onOpen` | function | | Викликається при відкритті. |
 | `onClose` | function | | Викликається при закритті. |
@@ -127,6 +147,9 @@ Window:Open()
 | `Window:IsOpen()` | `true`, якщо вікно відкрите. |
 | `Window:Destroy()` | Знищує вікно, відключає всі події, відновлює мишу. |
 | `Window:SetTheme(name)` | Те саме, що `Library:SetTheme`. |
+| `Window:AddWatermark(opts)` | Плашка з FPS і ping (див. [нижче](#водяний-знак-blur-і-пошук)). |
+| `Window:SetWatermark(bool)` / `IsWatermarkVisible()` | Показати або сховати водяний знак. |
+| `Window:SetBlur(bool)` / `GetBlur()` | Blur фону при відкритому меню. |
 | `Window:SetLanguage(code)` | Те саме, що `Library:SetLanguage`. |
 | `Window:GetLanguage()` / `GetThemeName()` | Геттери. |
 | `Window.ScreenGui`, `Window.Main` | Кореневий `ScreenGui` і головний `CanvasGroup`. |
@@ -262,6 +285,114 @@ dd:Refresh()                     -- перебудувати список
 
 ---
 
+### Нові компоненти (v3.0)
+
+Усі методи викликаються на `SubTab` і беруть участь у глобальному пошуку.
+
+#### `AddKeybind(opts)`
+
+Кнопка, яка чекає натискання клавіші. `Esc` скасовує, `Backspace` очищає.
+
+```lua
+local _, kb = Sub:AddKeybind({
+    name = "Aim key", flag = "aim_key", default = Enum.KeyCode.E,
+    callback = function(keyCode) print("bound:", keyCode) end,   -- nil, якщо очищено
+    onPress  = function() print("pressed") end,                  -- коли клавішу натиснули поза режимом призначення
+})
+kb:Get()            -- Enum.KeyCode або nil
+kb:Set("G")         -- рядок або Enum.KeyCode
+```
+
+У прапорі зберігається **назва клавіші** (`"E"`, `"None"`), тому конфіги працюють.
+
+#### `AddTextbox(opts)`
+
+| Поле | Опис |
+|---|---|
+| `name` / `key` / `flag` | Як у інших компонентів. |
+| `default`, `placeholder` | Початковий текст і підказка. |
+| `numeric` | `true` залишає лише цифри, `.` і `-`. |
+| `callback(text, enterPressed)` | Викликається при Enter або втраті фокусу. |
+
+Повертає `host, api` (`api:Get()`, `api:Set(text)`).
+
+#### `AddInfoRow(opts)`
+
+Рядок «назва ... значення». Клік копіює значення й показує сповіщення.
+
+```lua
+local _, row = Sub:AddInfoRow({
+    name = "Key", value = "sxnt-ab…xyz",
+    copyValue = fullKey,             -- що копіювати (рядок або функція); за замовчуванням value
+    color = Color3.fromRGB(80, 220, 140),
+    dot = Color3.fromRGB(80, 220, 140),   -- індикатор-«пульс» ліворуч від значення
+    copy = false,                    -- вимкнути копіювання
+})
+row:Set("новий текст", newColor)   row:SetColor(c)   row:SetDot(c or nil)
+```
+
+#### `AddProfileCard(opts)`
+
+Картка профілю з аватаром (обертове градієнтне кільце), ім'ям, `@ніком`, ID (клік копіює) і бейджем. Усі поля необов'язкові, за замовчуванням береться `LocalPlayer`.
+
+```lua
+local _, card = Sub:AddProfileCard({
+    name = "Dmytro", username = "@sxnt_gn", userId = 123,
+    badge = "PREMIUM", badgeColor = Library:GetTheme().green,
+})
+card:SetBadge("EXPIRED", Library:GetTheme().red)
+```
+
+#### `AddStats(list)`
+
+Ряд плиток «велике число + підпис». Повертає масив `api` (`api:Set(value)` з анімацією, `api:SetColor(c)`).
+
+```lua
+local stats = Sub:AddStats({
+    { name = "Онлайн", value = "2" },
+    { name = "Ping", value = "—" },
+})
+stats[1]:Set("3")
+```
+
+#### `AddDivider()`
+
+Тонка лінія з плавним затуханням по краях.
+
+#### Опис у toggle
+
+```lua
+Sub:AddToggle({ name = "Fullbright", desc = "Прибирає темряву", flag = "fb" })
+```
+
+## Конфіги
+
+Потрібен executor з `writefile` / `readfile` / `isfile` (для списку ще й `listfiles`, для видалення `delfile`). Зберігаються всі прапори з типом `boolean`, `number`, `string`.
+
+```lua
+Library.ConfigIgnore["cfg_name"] = true     -- службові прапори не зберігати
+
+local ok, err = Library:SaveConfig("legit")
+local ok2, applied = Library:LoadConfig("legit")   -- applied = скільки параметрів застосовано
+print(Library:ListConfigs())                   -- { "legit", ... }
+Library:DeleteConfig("legit")
+
+Library:SetAutoload("legit")                   -- пустий рядок вимикає
+Library:AutoLoad()                             -- викликай після створення всіх елементів
+```
+
+Без файлової системи `SaveConfig` / `LoadConfig` повертають `false, "filesystem unavailable"`. `ExportConfig()` / `ImportConfig(tbl)` працюють завжди, так що JSON можна зберігати де завгодно.
+
+## Водяний знак, blur і пошук
+
+```lua
+Window:AddWatermark({ text = "SXNT", showFps = true, showPing = true })
+Window:SetWatermark(false)      -- сховати
+Window:SetBlur(true)            -- розмиття, поки меню відкрите (або blur = true у CreateWindow)
+```
+
+**Пошук** — поле в шапці. Фільтрує компоненти всіх вкладок за назвою (з урахуванням поточної мови); під час пошуку секції й розділювачі ховаються. Порожній запит повертає все назад. На вузькому вікні (менше ~454 px) поле зникає.
+
 ## ExpandableCard і Mini-компоненти
 
 Картка із заголовком-перемикачем: коли вона увімкнена, вона розгортається і показує вкладені елементи.
@@ -350,7 +481,7 @@ Library:RegisterFlag("custom",
 
 ## Теми
 
-Вбудовані: `Ice`, `Purple`, `Crimson`, `Toxic`, `Midnight`, `Sunset` (список у `Library.ThemeOrder`).
+Вбудовані: `Ice`, `Purple`, `Crimson`, `Toxic`, `Midnight`, `Sunset`, `Aurora`, `Rose` (список у `Library.ThemeOrder`).
 
 ```lua
 Library:SetTheme("Purple")          -- плавне перефарбування всього вікна
@@ -406,7 +537,7 @@ Sub:AddDropdown({
 
 Вбудовані мови: `ENG`, `UA`, `TR`, `RUS`. Вбудовані ключі:
 
-`copy`, `copied`, `lang`, `keybind`, `bindkey`, `hideicon`, `theme`, `sound`, `volume`, `cant_hide_mobile`, `cleared`, `welcome_new`, `welcome_back`, `loading`, `entering`.
+`copy`, `copied`, `lang`, `keybind`, `bindkey`, `hideicon`, `theme`, `sound`, `volume`, `cant_hide_mobile`, `cleared`, `welcome_new`, `welcome_back`, `loading`, `entering`, `search`, `none`, `no_clipboard`.
 
 ```lua
 Library:SetLanguage("UA")
@@ -415,7 +546,7 @@ print(Library:T("theme"))   -- "Тема"
 
 ### Власні переклади
 
-> `RegisterTranslations` (і опція `translations` у `CreateWindow`) **замінює** всю таблицю. Щоб не втратити вбудовані ключі, скопіюй їх у свою таблицю. Мови, яких немає в таблиці, мають fallback на `ENG`.
+> З v3.0 `RegisterTranslations` (і опція `translations` у `CreateWindow`) **додає** ключі до вбудованих і перезаписує однакові. Копіювати вбудовані ключі більше не потрібно. Якщо ключа немає для мови, береться значення з `ENG`.
 
 ```lua
 Library:RegisterTranslations({
@@ -582,6 +713,9 @@ end)
 
 ## Вирішення проблем
 
+**Усе вікно темне, ледь видно текст.**
+Це був баг до v3.0: `UIGradient` на `CanvasGroup` множить увесь вміст групи на свої (дуже темні) кольори. Якщо додаєш власні елементи, ніколи не вішай `UIGradient` на `CanvasGroup`, `Window.Main` чи вкладки. Клади градієнт на окремий `Frame` усередині.
+
 **Меню не з'являється.**
 Перевір, що викликаєш `Window:Open()` або натискаєш `menuKey`. Іконка меню з'являється автоматично, якщо вікно закрите. Якщо GUI не видно, переконайся, що `GetMainGui` має доступ до `CoreGui`. Інакше воно йде в `PlayerGui`, де `ResetOnSpawn` вимкнено.
 
@@ -589,7 +723,7 @@ end)
 Власні `Instance` бібліотека не знає. Фарбуй їх вручну в `onThemeRequested` (або після `Library:SetTheme(..., { onApplied = fn })`), беручи кольори з `Library:GetTheme()`.
 
 **Переклад не змінюється.**
-Перевір, що елементи створені з `key`, ключ існує в `RegisterTranslations` для потрібної мови, а таблиця перекладів містить усі потрібні вбудовані ключі (`RegisterTranslations` замінює їх).
+Перевір, що елементи створені з `key`, ключ існує в `RegisterTranslations` для потрібної мови, а ключ є для потрібної мови (з v3.0 `RegisterTranslations` лише додає ключі, вбудовані не зникають).
 
 **Після закриття меню миша не блокується.**
 У v2.0 відновлюється стан, який був до відкриття. Якщо твоя гра очікує `LockCenter` завжди, передай `lockMouseOnClose = true`.
