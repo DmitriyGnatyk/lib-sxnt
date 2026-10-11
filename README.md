@@ -1,8 +1,26 @@
-# SXNT UI Library v3.2 · Premium
+# SXNT UI Library v3.3 · Premium
 
 Бібліотека меню для Roblox (Luau): вікно з вкладками, під-вкладками, toggle, slider, dropdown, кнопками, розгортними картками, сповіщеннями, темами та мультимовністю. Усе анімоване (hover, ripple, ковзні індикатори, плавні відкриття та закриття).
 
-> Версія 3.2 повністю сумісна за API з 1.x, 2.x, 3.0 і 3.1. Старі скрипти працюють без змін.
+> Версія 3.3 повністю сумісна за API з 1.x, 2.x і 3.0–3.2. Старі скрипти працюють без змін.
+
+### Що нового у 3.3
+
+**Шрифти.** `Library:SetFont(name)` змінює шрифт усього інтерфейсу на льоту (близько 35 шрифтів, список у `Library.FontOrder`). Готовий селектор: `Sub:AddFontPicker()`, у ньому кожен пункт показаний власним шрифтом. Свої шрифти додаються через `Library:AddFont`. Деталі в розділі [Шрифти](#шрифти).
+
+**Теми.** Замість 8 тепер 28: 16 нових темних (Ocean, Sky, Mint, Forest, Cyber, Amethyst, Dracula, Nord, Monokai, Gold, Lava, Blood, Sakura, NeonPink, Coffee, Graphite) і **4 світлі** (Snow, Paper, Lavender, MintLight). Усі підсвічування та натискання адаптуються до світлої теми. Готовий селектор: `Sub:AddThemePicker()` з кольоровими «краплями» акцентів біля кожної теми.
+
+**Конфіги** тепер зберігають і відновлюють тему, шрифт та мову (`Library.ConfigSaveAppearance`, за замовчуванням `true`).
+
+**Аудит і виправлення**
+- Помилки в колбеках більше не ковтаються мовчки: у консолі з'являється `[SXNT] помилка в колбеку: ...` (однакові повідомлення не частіше раза на 5 с).
+- `language` у `CreateWindow` приймає й власні мови, додані через `RegisterTranslations`, а не лише вбудовані.
+- Невідома `theme` або `font` у `CreateWindow` дає попередження замість тихого ігнорування.
+- `Window:Notify` повертає другим значенням функцію закриття: `local card, dismiss = Window:Notify(...)`.
+- Dropdown: `api:SetSilent(v)` змінює значення без виклику `callback`, а `opts.swatch` / `opts.optionFont` дозволяють прикрашати пункти (їх використовують селектори теми й шрифту).
+- Світлі теми: кольори hover і pressed рахуються від напряму теми (`Theme.light`, `Theme.tint`), а не лише в бік білого.
+
+---
 
 ### Що нового у 3.2
 
@@ -59,12 +77,13 @@
 7. [ExpandableCard і Mini-компоненти](#expandablecard-і-mini-компоненти)
 8. [Прапори (Flags)](#прапори-flags)
 9. [Теми](#теми)
-10. [Мови та переклади](#мови-та-переклади)
-11. [Сповіщення](#сповіщення)
-12. [Welcome Splash](#welcome-splash)
-13. [Керування й поведінка](#керування-й-поведінка)
-14. [Повний приклад](#повний-приклад)
-15. [Вирішення проблем](#вирішення-проблем)
+10. [Шрифти](#шрифти)
+11. [Мови та переклади](#мови-та-переклади)
+12. [Сповіщення](#сповіщення)
+13. [Welcome Splash](#welcome-splash)
+14. [Керування й поведінка](#керування-й-поведінка)
+15. [Повний приклад](#повний-приклад)
+16. [Вирішення проблем](#вирішення-проблем)
 
 ---
 
@@ -124,6 +143,9 @@ Window:Open()
 | `Library:OnFlagChanged(name, fn)` | Підписка на зміни прапора, `fn(value)`. |
 | `Library:GetTheme()` | Таблиця активної теми (живе дзеркало). |
 | `Library:GetThemeName()` | Назва активної теми. |
+| `Library:SetFont(name)` / `Library:GetFont()` | Змінити / отримати шрифт інтерфейсу (повертає `true/false`). |
+| `Library:AddFont(name, regular, bold)` | Додати власний шрифт (`Enum.Font`; жирний необов'язковий). |
+| `Library.Fonts` / `Library.FontOrder` | Таблиця шрифтів і масив назв (для dropdown-ів). |
 | `Library:SetTheme(name, opts)` | Змінює тему для всіх вікон. `opts.onApplied(name)` викликається одразу після застосування. Повертає `true/false`. |
 | `Library:AddTheme(name, tbl)` | Додає власну тему. |
 | `Library:GetLanguage()` / `Library:SetLanguage(code)` | Поточна мова / зміна мови (`ENG`, `UA`, `TR`, `RUS`). |
@@ -150,6 +172,7 @@ Window:Open()
 | `title` | string | `"SXNT"` | Заголовок у шапці. |
 | `width`, `height` | number | `500`, `360` | Початковий розмір вікна. Користувач може змінити розмір (400–720 × 280–520). |
 | `theme` | string | `"Ice"` | Початкова тема. |
+| `font` | string | `"Gotham"` | Початковий шрифт (назва з `Library.FontOrder`). |
 | `language` | string | `"ENG"` | Початкова мова. |
 | `translations` | table | вбудовані | Власні переклади (замінює вбудовані). |
 | `avatar` | string | вбудований | `rbxassetid://...` для іконки меню. |
@@ -301,6 +324,8 @@ print(toggle:Get())
 | `callback(value)` | Викликається при виборі. |
 | `getValue()` | Необов'язково: початкове значення береться звідси. |
 | `setValue(value)` | Необов'язково: додатковий колбек при виборі користувачем. |
+| `swatch(option)` | Необов'язково: повертає `Color3, Color3` для двох кольорових «крапель» біля пункту. |
+| `optionFont(option)` | Необов'язково: повертає `Enum.Font`, яким малюється цей пункт. |
 
 Повертає `api`:
 
@@ -310,9 +335,10 @@ dd:Get()                         -- "A"
 dd:Set("B")                      -- змінює значення і викликає callback
 dd:SetOptions({"X", "Y"}, "X")   -- нові варіанти і поточне значення
 dd:Refresh()                     -- перебудувати список
+dd:SetSilent("C")                -- змінити значення БЕЗ виклику callback
 ```
 
-Одночасно відкритий лише один dropdown. Закривається кліком поза ним, зміною вкладки та закриттям вікна. Максимум 5 пунктів видно одразу, далі список прокручується.
+Одночасно відкритий лише один dropdown. Закривається кліком поза ним, зміною вкладки та закриттям вікна. Максимум 6 пунктів видно одразу, далі список прокручується.
 
 ---
 
@@ -411,6 +437,8 @@ Library:DeleteConfig("legit")
 Library:SetAutoload("legit")                   -- пустий рядок вимикає
 Library:AutoLoad()                             -- викликай після створення всіх елементів
 ```
+
+Разом із прапорами зберігаються **тема, шрифт та мова** (ключі `__theme`, `__font`, `__language`). Вимкнути: `Library.ConfigSaveAppearance = false`.
 
 Без файлової системи `SaveConfig` / `LoadConfig` повертають `false, "filesystem unavailable"`. `ExportConfig()` / `ImportConfig(tbl)` працюють завжди, так що JSON можна зберігати де завгодно.
 
@@ -512,7 +540,12 @@ Library:RegisterFlag("custom",
 
 ## Теми
 
-Вбудовані: `Ice`, `Purple`, `Crimson`, `Toxic`, `Midnight`, `Sunset`, `Aurora`, `Rose` (список у `Library.ThemeOrder`).
+Вбудовано **28 тем** (список у `Library.ThemeOrder`):
+
+- **Темні:** Ice, Purple, Crimson, Toxic, Midnight, Sunset, Aurora, Rose, Ocean, Sky, Mint, Forest, Cyber, Amethyst, Dracula, Nord, Monokai, Gold, Lava, Blood, Sakura, NeonPink, Coffee, Graphite.
+- **Світлі:** Snow, Paper, Lavender, MintLight.
+
+Тема вважається світлою автоматично, якщо її `bg` яскравий (або задай `light = true/false` у власній темі).
 
 ```lua
 Library:SetTheme("Purple")          -- плавне перефарбування всього вікна
@@ -549,9 +582,19 @@ Library:SetTheme("Ocean")
 | `border` | рамки й лінії |
 | `green`, `red` | успіх, помилка / закриття |
 | `telegram` | колір посилань (зарезервований) |
+| `light`, `tint` | **похідні**: світла чи темна тема і колір для підсвічування (білий для темних, чорний для світлих). |
 | `card2`, `track`, `amber`, `onAccent` | **похідні**, рахуються автоматично. `onAccent` — колір тексту на акценті (темний для світлих акцентів, наприклад у Midnight і Toxic). Їх можна вказати вручну. |
 
-### Dropdown вибору теми
+### Готовий селектор теми
+
+```lua
+Sub:AddThemePicker()                         -- dropdown з крапками кольорів біля кожної теми
+Sub:AddThemePicker({ flag = "my_theme" })    -- name, key, flag, callback — необов'язкові
+```
+
+Селектор сам синхронізується, якщо тему змінили зсередини (`Library:SetTheme`, конфіг тощо). За замовчуванням його прапор називається `sxnt_theme`, тож він потрапляє у конфіги.
+
+Те саме без готового компонента:
 
 ```lua
 Sub:AddDropdown({
@@ -561,6 +604,37 @@ Sub:AddDropdown({
     callback = function(name) Library:SetTheme(name) end,
 })
 ```
+
+---
+
+## Шрифти
+
+```lua
+Library:SetFont("Ubuntu")            -- змінює шрифт усього інтерфейсу плавно, на льоту
+print(Library:GetFont())             -- "Ubuntu"
+Window:SetFont("Arial")              -- те саме
+Library:CreateWindow({ font = "Nunito" })   -- початковий шрифт
+```
+
+Готовий селектор (кожен пункт показаний своїм шрифтом):
+
+```lua
+Sub:AddFontPicker()                           -- прапор за замовчуванням: sxnt_font
+Sub:AddFontPicker({ name = "Шрифт меню" })
+```
+
+**Доступні шрифти** (`Library.FontOrder`; якщо у вашій версії Roblox якогось шрифту немає, він просто пропускається):
+Gotham, Gotham Semibold, Gotham Black, Builder Sans, Source Sans, Source Sans Light, Arial, Ubuntu, Roboto, Roboto Condensed, Roboto Mono, Nunito, Montserrat, Josefin Sans, Oswald, Titillium Web, Inconsolata, Jura, Michroma, Sarpanch, Merriweather, Garamond, Bodoni, Code, Sci-Fi, Arcade, Highway, Cartoon, Fredoka One, Patrick Hand, Indie Flower, Kalam, Special Elite, Permanent Marker, Amatic SC, Bangers, Fantasy, Antique.
+
+**Свій шрифт:**
+
+```lua
+Library:AddFont("My Mix", Enum.Font.Code, Enum.Font.Arcade)   -- звичайний і жирний
+Library:SetFont("My Mix")
+```
+
+> Декоративні шрифти (Cartoon, Arcade, Sci-Fi тощо) можуть не мати кирилиці: тоді Roblox підставить стандартний шрифт для українських літер, і текст виглядатиме змішано. Для української й російської надійні Gotham, Source Sans, Arial, Ubuntu, Roboto, Nunito, Merriweather.
+> Широкі шрифти (Michroma, Code) можуть частіше обрізати довгі підписи крапкою.
 
 ---
 
