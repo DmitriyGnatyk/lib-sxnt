@@ -1,3 +1,10 @@
+--[[
+    SXNT UI Library  v3.2
+    ─ пружинний рушій анімацій (переривані, без ривків)
+    ─ м'які easing-криві для всіх кольорових переходів
+    ─ виправлення: keybind/textbox/search/notify/resize/конфіги та ін.
+]]
+
 local Players          = game:GetService("Players")
 local Workspace        = game:GetService("Workspace")
 local RunService       = game:GetService("RunService")
@@ -197,23 +204,138 @@ end
 
 -- Tween, який сам скасовує попередній tween тих самих властивостей (без race condition)
 local activeTweens = setmetatable({}, { __mode = "k" })
+local springs, springConn = {}, nil
+
+-- Кольорові / прозорі властивості анімуються м'якою Sine InOut кривою, рухи — Quint Out
+local PAINT = {
+    BackgroundColor3 = true, TextColor3 = true, Color = true, ImageColor3 = true, ScrollBarImageColor3 = true,
+    BackgroundTransparency = true, TextTransparency = true, ImageTransparency = true,
+    GroupTransparency = true, Transparency = true, Thickness = true,
+}
 local function tw(obj, t, props, style, dir)
+    local sb = springs[obj]
+    if sb then for k in pairs(props) do sb[k] = nil end end
     if t <= 0 then
         for k, v in pairs(props) do obj[k] = v end
         return nil
     end
-    local keys = {}
-    for k in pairs(props) do keys[#keys + 1] = k end
+    local keys, paint = {}, true
+    for k in pairs(props) do
+        keys[#keys + 1] = k
+        if not PAINT[k] then paint = false end
+    end
     table.sort(keys)
     local key = table.concat(keys, ",")
+    if style == nil then
+        if paint then style, dir, t = ES.Sine, ED.InOut, t * 1.2
+        else style = ES.Quint end
+    end
     local bucket = activeTweens[obj]
     if not bucket then bucket = {}; activeTweens[obj] = bucket end
     local prev = bucket[key]
     if prev then prev:Cancel() end
-    local tween = TweenService:Create(obj, TweenInfo.new(t, style or ES.Quart, dir or ED.Out), props)
+    local tween = TweenService:Create(obj, TweenInfo.new(t, style, dir or ED.Out), props)
     bucket[key] = tween
     tween:Play()
     return tween
+end
+
+-- ═══ SPRING ENGINE ═══
+-- Пружина зберігає швидкість при зміні цілі, тому анімацію можна переривати будь-коли
+-- (відкрив-закрив-відкрив, швидке перемикання вкладок, тягнення повзунка) — без ривків.
+-- { частота (рад/с), демпфування } — демпфування 1 = без перельоту, < 1 = м'яке «пружинення»
+local SPRING = {
+    soft   = { 13, 0.82 },
+    pop    = { 15, 0.62 },
+    smooth = { 10, 1.0 },
+    snap   = { 26, 1.0 },
+}
+local SPRING_EPS = {
+    n  = { 0.0008 },
+    u  = { 0.0006, 0.02 },
+    u2 = { 0.0006, 0.02, 0.0006, 0.02 },
+    v2 = { 0.02, 0.02 },
+    c  = { 0.002, 0.002, 0.002 },
+}
+local function toArr(v)
+    local t = typeof(v)
+    if t == "number" then return { v }, "n" end
+    if t == "UDim2" then return { v.X.Scale, v.X.Offset, v.Y.Scale, v.Y.Offset }, "u2" end
+    if t == "UDim" then return { v.Scale, v.Offset }, "u" end
+    if t == "Vector2" then return { v.X, v.Y }, "v2" end
+    if t == "Color3" then return { v.R, v.G, v.B }, "c" end
+    return nil
+end
+local function fromArr(a, kind)
+    if kind == "n" then return a[1]
+    elseif kind == "u2" then return UDim2.new(a[1], a[2], a[3], a[4])
+    elseif kind == "u" then return UDim.new(a[1], a[2])
+    elseif kind == "v2" then return Vector2.new(a[1], a[2])
+    end
+    return Color3.new(math.clamp(a[1], 0, 1), math.clamp(a[2], 0, 1), math.clamp(a[3], 0, 1))
+end
+local function stepSprings(dt)
+    dt = math.min(dt, 0.05)
+    local n = math.max(1, math.ceil(dt * 120))
+    local h = dt / n
+    for obj, props in pairs(springs) do
+        if not obj:IsDescendantOf(game) then
+            springs[obj] = nil
+        else
+            for prop, s in pairs(props) do
+                local k, c, x, v, t = s.k, s.c, s.x, s.v, s.t
+                for _ = 1, n do
+                    for i = 1, #x do
+                        v[i] += (-k * (x[i] - t[i]) - c * v[i]) * h
+                        x[i] += v[i] * h
+                    end
+                end
+                local done = true
+                for i = 1, #x do
+                    local e = s.eps[i]
+                    if math.abs(x[i] - t[i]) > e or math.abs(v[i]) > e * 10 then done = false; break end
+                end
+                if done then
+                    for i = 1, #x do x[i] = t[i] end
+                    props[prop] = nil
+                end
+                obj[prop] = fromArr(x, s.kind)
+            end
+            if next(props) == nil then springs[obj] = nil end
+        end
+    end
+    if next(springs) == nil and springConn then
+        springConn:Disconnect(); springConn = nil
+    end
+end
+local function sp(obj, prop, target, preset)
+    preset = preset or SPRING.smooth
+    local arr, kind = toArr(target)
+    if not arr then obj[prop] = target; return end
+    local tb = activeTweens[obj]
+    if tb then
+        for key, tween in pairs(tb) do
+            if ("," .. key .. ","):find("," .. prop .. ",", 1, true) then tween:Cancel(); tb[key] = nil end
+        end
+    end
+    local bucket = springs[obj]
+    if not bucket then bucket = {}; springs[obj] = bucket end
+    local s = bucket[prop]
+    if not s then
+        local cur = toArr(obj[prop])
+        if not cur then obj[prop] = target; return end
+        s = { x = cur, v = table.create(#cur, 0), kind = kind, eps = SPRING_EPS[kind] }
+        bucket[prop] = s
+    end
+    s.t = arr
+    local w = preset[1]
+    s.k = w * w; s.c = 2 * preset[2] * w
+    if not springConn then springConn = RunService.Heartbeat:Connect(stepSprings) end
+end
+local function spSnap(obj, prop, value)
+    local b = springs[obj]
+    if b then b[prop] = nil end
+    obj[prop] = value
 end
 
 -- Нескінченний пульс (рахується рушієм, не Lua)
@@ -333,11 +455,12 @@ local function ripple(host, pos, color, scale, radius)
     local c = new("Frame", {
         AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(rel.X, rel.Y),
         Size = UDim2.fromOffset(0, 0), BackgroundColor3 = color or WHITE,
-        BackgroundTransparency = 0.82, BorderSizePixel = 0,
+        BackgroundTransparency = 0.86, BorderSizePixel = 0,
     }, layer)
     corner(c, 999)
-    tw(c, 0.6, { Size = UDim2.fromOffset(d, d), BackgroundTransparency = 1 }, ES.Quint)
-    Debris:AddItem(c, 0.7)
+    tw(c, 0.85, { Size = UDim2.fromOffset(d, d) }, ES.Quint)
+    tw(c, 0.85, { BackgroundTransparency = 1 }, ES.Sine, ED.In)
+    Debris:AddItem(c, 0.95)
 end
 
 -- Легкі частинки: кожна рухається власним tween-ом (без циклу кожен кадр)
@@ -472,7 +595,7 @@ local function ShowWelcomeSplash(opts)
 
     -- поява
     tw(card, 0.35, { GroupTransparency = 0 }, ES.Quad)
-    tw(cardScale, 0.55, { Scale = fit }, ES.Back)
+    sp(cardScale, "Scale", fit, SPRING.pop)
     task.wait(0.2)
     tw(logo, 0.45, { TextTransparency = 0 }, ES.Quad)
     task.wait(0.08)
@@ -492,7 +615,7 @@ local function ShowWelcomeSplash(opts)
 
     -- зникнення
     tw(card, 0.35, { GroupTransparency = 1 }, ES.Quad, ED.In)
-    tw(cardScale, 0.35, { Scale = fit * 1.08 }, ES.Quad, ED.In)
+    sp(cardScale, "Scale", fit * 1.06, SPRING.smooth)
     task.delay(0.4, function()
         splashGui:Destroy()
         if opts.onComplete then pcall(opts.onComplete) end
@@ -503,7 +626,7 @@ end
 --  LIBRARY TABLE / PUBLIC API
 -- ═══════════════════════════════════════════════════════════
 local Library = {}
-Library.Version = "3.0"
+Library.Version = "3.2"
 Library.Themes = THEMES
 Library.ThemeOrder = THEME_ORDER
 Library.Defaults = { avatar = DEFAULT_AVATAR }
@@ -566,7 +689,7 @@ function Library:SetTheme(name, opts)
     if not THEMES[name] then return false end
     applyThemeToMirror(name)
     if opts and opts.onApplied then pcall(opts.onApplied, name) end
-    for _, win in ipairs(Library._windows) do
+    for _, win in ipairs(table.clone(Library._windows)) do
         if win and win._applyTheme then pcall(win._applyTheme) end
     end
     return true
@@ -577,7 +700,7 @@ function Library:GetLanguage() return currentLang end
 function Library:SetLanguage(code)
     if not VALID_LANGS[code] and not L[code] then return false end
     currentLang = code
-    for _, win in ipairs(Library._windows) do
+    for _, win in ipairs(table.clone(Library._windows)) do
         if win and win._applyLanguage then pcall(win._applyLanguage) end
     end
     return true
@@ -649,6 +772,8 @@ function Library:CreateWindow(opts)
     W._C = Theme
     W._searchItems = {}
     W._listening = false
+    W._closeHooks = {}
+    W._tabScales = {}
 
     local conns = W._connections
     local function track(c) conns[#conns + 1] = c; return c end
@@ -772,10 +897,10 @@ function Library:CreateWindow(opts)
     local iconState = { hover = false, down = false }
     interact(icon, iconState, function()
         if isOpen or hideIcon then return end
-        tw(iconScale, 0.2, { Scale = iconState.down and 0.92 or (iconState.hover and 1.08 or 1) }, ES.Quint)
+        sp(iconScale, "Scale", iconState.down and 0.9 or (iconState.hover and 1.1 or 1), SPRING.soft)
     end)
     task.delay(0.15, function()
-        if icon.Parent and not isOpen then tw(iconScale, 0.55, { Scale = 1 }, ES.Back) end
+        if icon.Parent and not isOpen then sp(iconScale, "Scale", 1, SPRING.pop) end
     end)
 
     -- ─────────────── ГОЛОВНЕ ВІКНО ───────────────
@@ -821,22 +946,24 @@ function Library:CreateWindow(opts)
     function W:Open()
         if isOpen or self._destroyed then return end
         isOpen = true; animTok += 1
-        savedMouse = { Behavior = UserInputService.MouseBehavior, Icon = UserInputService.MouseIconEnabled }
-        tw(iconScale, 0.22, { Scale = 0 }, ES.Back, ED.In)
         local tok = animTok
-        task.delay(0.22, function() if animTok == tok and icon.Parent then icon.Visible = false end end)
-        main.Visible = true
-        main.GroupTransparency = 1
-        uiScale.Scale = baseScale * 0.9
-        tw(main, 0.3, { GroupTransparency = 0 }, ES.Quad)
-        tw(uiScale, 0.45, { Scale = baseScale }, ES.Back)
+        savedMouse = { Behavior = UserInputService.MouseBehavior, Icon = UserInputService.MouseIconEnabled }
+        sp(iconScale, "Scale", 0, SPRING.smooth)
+        task.delay(0.3, function() if animTok == tok and icon.Parent then icon.Visible = false end end)
+        if not main.Visible then
+            main.GroupTransparency = 1
+            spSnap(uiScale, "Scale", baseScale * 0.9)
+            main.Visible = true
+        end
+        tw(main, 0.4, { GroupTransparency = 0 })
+        sp(uiScale, "Scale", baseScale, SPRING.pop)
         forceMouse()
         pcall(function() borderSpin:Play() end)
         applyBlur()
         for i, b in ipairs(W._tabButtons) do
             b.TextTransparency = 1
-            task.delay(0.08 + i * 0.045, function()
-                if animTok == tok and b.Parent then tw(b, 0.35, { TextTransparency = 0 }, ES.Quad) end
+            task.delay(0.1 + i * 0.05, function()
+                if animTok == tok and b.Parent then tw(b, 0.45, { TextTransparency = 0 }) end
             end)
         end
         if opts.onOpen then pcall(opts.onOpen) end
@@ -846,19 +973,20 @@ function Library:CreateWindow(opts)
         animTok += 1
         local tok = animTok
         if W._currentExpanded then pcall(W._currentExpanded) end
+        for _, h in ipairs(W._closeHooks) do pcall(h) end
         restoreMouse()
         isOpen = false
         applyBlur()
-        tw(main, 0.22, { GroupTransparency = 1 }, ES.Quad, ED.In)
-        tw(uiScale, 0.24, { Scale = baseScale * 0.92 }, ES.Quad, ED.In)
-        task.delay(0.22, function()
+        tw(main, 0.3, { GroupTransparency = 1 })
+        sp(uiScale, "Scale", baseScale * 0.94, SPRING.smooth)
+        task.delay(0.32, function()
             if animTok ~= tok or not main.Parent then return end
             main.Visible = false
             pcall(function() borderSpin:Pause() end)
             if not hideIcon then
                 icon.Visible = true
-                iconScale.Scale = 0
-                tw(iconScale, 0.5, { Scale = 1 }, ES.Back)
+                spSnap(iconScale, "Scale", 0)
+                sp(iconScale, "Scale", 1, SPRING.pop)
             end
         end)
         if opts.onClose then pcall(opts.onClose) end
@@ -1060,8 +1188,29 @@ function Library:CreateWindow(opts)
                 it.inst.Visible = show
             end
         end
+        if q == "" then
+            tw(searchStroke, 0.2, { Color = searchInput:IsFocused() and Theme.accent or Theme.border })
+            return
+        end
+        -- якщо на активній сторінці немає збігів — перейти туди, де вони є
+        local anyMatch, activeHas, firstOther = false, false, nil
+        local curTab = W._tabs[W._activeTab]
+        local curSub = curTab and curTab._activeSub
+        for _, it in ipairs(W._searchItems) do
+            if it.inst and it.inst.Parent and not it.section and it.inst.Visible then
+                anyMatch = true
+                if it.sub and it.sub == curSub then activeHas = true end
+                if not firstOther and it.sub then firstOther = it.sub end
+            end
+        end
+        if anyMatch and not activeHas and firstOther then
+            W._switchTab(firstOther._tab._index, true)
+            if firstOther._select then firstOther._select() end
+        end
+        tw(searchStroke, 0.25, { Color = anyMatch and Theme.accent or Theme.red })
     end
     searchInput:GetPropertyChangedSignal("Text"):Connect(applySearch)
+    table.insert(W._closeHooks, function() searchInput:ReleaseFocus() end)
     searchInput.Focused:Connect(function()
         tw(searchStroke, 0.2, { Color = Theme.accent, Transparency = 0 })
         tw(searchBox, 0.2, { BackgroundTransparency = 0.1 })
@@ -1093,8 +1242,9 @@ function Library:CreateWindow(opts)
         moveConn = UserInputService.InputChanged:Connect(function(i)
             if i.UserInputType == Enum.UserInputType.MouseMovement or (i.UserInputType == Enum.UserInputType.Touch and i == input) then
                 local d = (Vector2.new(i.Position.X, i.Position.Y) - startMouse) / sc
-                winW = math.clamp(startW + d.X, 400, 720)
-                winH = math.clamp(startH + d.Y, 280, 520)
+                local vp = viewport()
+                winW = math.clamp(startW + d.X, 400, math.max(400, math.min(720, vp.X / sc - 12)))
+                winH = math.clamp(startH + d.Y, 280, math.max(280, math.min(520, vp.Y / sc - 12)))
                 main.Size = UDim2.fromOffset(winW, winH)
                 setMainCenter(topLeft + Vector2.new(winW, winH) * sc / 2)
             end
@@ -1140,9 +1290,9 @@ function Library:CreateWindow(opts)
         local y = (index - 1) * (TAB_H + TAB_GAP)
         tabIndicator.Visible = true
         if animate then
-            tw(tabIndicator, 0.38, { Position = UDim2.fromOffset(0, y) }, ES.Quint)
+            sp(tabIndicator, "Position", UDim2.fromOffset(0, y), SPRING.soft)
         else
-            tabIndicator.Position = UDim2.fromOffset(0, y)
+            spSnap(tabIndicator, "Position", UDim2.fromOffset(0, y))
         end
     end
     local function switchTab(index, animate)
@@ -1155,13 +1305,18 @@ function Library:CreateWindow(opts)
         end
         local wrap = W._tabWraps[index]
         wrap.Visible = true; W._tabFrames[index].Visible = true
+        local wsc = W._tabScales[index]
         if animate ~= false and prev ~= 0 then
             local dir = (index > prev) and 1 or -1
             wrap.GroupTransparency = 1
-            wrap.Position = UDim2.fromOffset(0, 16 * dir)
-            tw(wrap, 0.35, { GroupTransparency = 0, Position = UDim2.fromOffset(0, 0) }, ES.Quint)
+            spSnap(wrap, "Position", UDim2.new(0.5, 0, 0.5, 22 * dir))
+            spSnap(wsc, "Scale", 0.97)
+            tw(wrap, 0.45, { GroupTransparency = 0 })
+            sp(wrap, "Position", UDim2.new(0.5, 0, 0.5, 0), SPRING.soft)
+            sp(wsc, "Scale", 1, SPRING.soft)
         else
-            wrap.GroupTransparency = 0; wrap.Position = UDim2.fromOffset(0, 0)
+            wrap.GroupTransparency = 0
+            spSnap(wrap, "Position", UDim2.new(0.5, 0, 0.5, 0)); spSnap(wsc, "Scale", 1)
         end
         moveIndicator(index, prev ~= 0 and animate ~= false)
         renderAllTabs()
@@ -1178,13 +1333,14 @@ function Library:CreateWindow(opts)
             TextTruncate = Enum.TextTruncate.AtEnd,
         }, tabList)
         corner(btn, 9)
-        new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8) }, btn)
+        local btnPad = new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8) }, btn)
         table.insert(W._tabButtons, btn)
         table.insert(W._tabData, { btn = btn, icon = iconChar, textKey = textKey, displayText = text })
 
         local st = { hover = false, down = false }
         local function render()
             local active = (W._activeTab == index)
+            sp(btnPad, "PaddingLeft", UDim.new(0, active and 14 or (st.hover and 16 or 12)), SPRING.soft)
             tw(btn, 0.2, {
                 TextColor3 = active and Theme.onAccent or (st.hover and Theme.text or Theme.muted),
                 BackgroundTransparency = (not active and st.hover) and 0.45 or 1,
@@ -1198,8 +1354,10 @@ function Library:CreateWindow(opts)
         onTheme(function() btn.BackgroundColor3 = Theme.card; render() end)
 
         local wrap = new("CanvasGroup", {
-            Name = "TabWrap", Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false,
+            Name = "TabWrap", Size = UDim2.fromScale(1, 1), AnchorPoint = Vector2.new(0.5, 0.5),
+            Position = UDim2.fromScale(0.5, 0.5), BackgroundTransparency = 1, Visible = false,
         }, contentArea)
+        W._tabScales[index] = new("UIScale", { Scale = 1 }, wrap)
         table.insert(W._tabWraps, wrap)
         local frame = new("ScrollingFrame", {
             Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
@@ -1244,8 +1402,20 @@ function Library:CreateWindow(opts)
     end))
     track(UserInputService.InputBegan:Connect(function(input)
         if not isPress(input) then return end
+        local p = inputScreenPos(input)
+        -- Геометрії самої по собі недостатньо (на мобільних координати можуть бути зсунуті на GuiInset),
+        -- тому «клік усередині» також фіксують самі елементи списку (insideAt) — перевірка відкладена на кадр.
         local pop = W._popup
-        if pop and not pointInGui(pop.card, inputScreenPos(input)) then pcall(pop.collapse) end
+        if pop and not pointInGui(pop.card, p) then
+            task.delay(0.03, function()
+                if W._popup == pop and (os.clock() - (pop.insideAt or 0)) > 0.15 then pcall(pop.collapse) end
+            end)
+        end
+        if W._listening and W._listenBtn and W._cancelListen and not pointInGui(W._listenBtn, p) then
+            task.delay(0.03, function()
+                if W._listening and (os.clock() - (W._listenInsideAt or 0)) > 0.15 then pcall(W._cancelListen) end
+            end)
+        end
     end))
 
     if not IS_MOBILE then
@@ -1265,10 +1435,10 @@ function Library:CreateWindow(opts)
         hideIcon = v and true or false
         if not isOpen then
             if hideIcon then
-                tw(iconScale, 0.2, { Scale = 0 }, ES.Back, ED.In)
-                task.delay(0.2, function() if hideIcon and icon.Parent then icon.Visible = false end end)
+                sp(iconScale, "Scale", 0, SPRING.smooth)
+                task.delay(0.3, function() if hideIcon and icon.Parent then icon.Visible = false end end)
             else
-                icon.Visible = true; tw(iconScale, 0.4, { Scale = 1 }, ES.Back)
+                icon.Visible = true; sp(iconScale, "Scale", 1, SPRING.pop)
             end
         end
     end
@@ -1376,10 +1546,10 @@ function Window:Notify(opts)
 
     self._notifN += 1
     local slot = new("Frame", {
-        Size = UDim2.new(1, 0, 0, cardH), BackgroundTransparency = 1, LayoutOrder = self._notifN,
+        Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1, LayoutOrder = self._notifN,
     }, holder)
     local card = new("CanvasGroup", {
-        Size = UDim2.fromScale(1, 1), Position = UDim2.new(1.15, 0, 0, 0), BackgroundColor3 = Theme.card,
+        Size = UDim2.new(1, 0, 0, cardH), Position = UDim2.new(1.15, 0, 0, 0), BackgroundColor3 = Theme.card,
         BorderSizePixel = 0, GroupTransparency = 1,
     }, slot)
     corner(card, 12)
@@ -1409,11 +1579,12 @@ function Window:Notify(opts)
         if closed then return end
         closed = true
         local idx = table.find(self._notifs, slot); if idx then table.remove(self._notifs, idx) end
-        tw(card, 0.3, { Position = UDim2.new(1.15, 0, 0, 0), GroupTransparency = 1 }, ES.Quint, ED.In)
-        task.delay(0.22, function()
+        sp(card, "Position", UDim2.new(1.15, 0, 0, 0), SPRING.smooth)
+        tw(card, 0.32, { GroupTransparency = 1 })
+        task.delay(0.2, function()
             if not slot.Parent then return end
-            tw(slot, 0.25, { Size = UDim2.new(1, 0, 0, 0) }, ES.Quint)
-            task.delay(0.3, function() if slot.Parent then slot:Destroy() end end)
+            sp(slot, "Size", UDim2.new(1, 0, 0, 0), SPRING.smooth)
+            task.delay(0.6, function() if slot.Parent then slot:Destroy() end end)
         end)
     end
 
@@ -1425,13 +1596,18 @@ function Window:Notify(opts)
     interact(closeBtn, cst, function() tw(closeBtn, 0.15, { TextColor3 = cst.hover and Theme.text or Theme.muted }) end)
     closeBtn.MouseButton1Click:Connect(dismiss)
 
+    self._notifDismiss = self._notifDismiss or {}
+    self._notifDismiss[slot] = dismiss
     table.insert(self._notifs, slot)
     while #self._notifs > 5 do
         local oldest = table.remove(self._notifs, 1)
-        if oldest and oldest.Parent then oldest:Destroy() end
+        local d = oldest and self._notifDismiss[oldest]
+        if d then d() elseif oldest and oldest.Parent then oldest:Destroy() end
     end
 
-    tw(card, 0.5, { Position = UDim2.fromOffset(0, 0), GroupTransparency = 0 }, ES.Quint)
+    sp(slot, "Size", UDim2.new(1, 0, 0, cardH), SPRING.smooth)
+    sp(card, "Position", UDim2.fromOffset(0, 0), SPRING.soft)
+    tw(card, 0.45, { GroupTransparency = 0 })
     if dur > 0 then
         tw(bar, dur, { Size = UDim2.new(0, 0, 0, 3) }, ES.Linear, ED.In)
         task.delay(dur, dismiss)
@@ -1482,9 +1658,12 @@ function Tab:AddSubTab(name)
         local x = (pill.AbsolutePosition.X - row.AbsolutePosition.X) / sc
         ind.Visible = true
         if animate then
-            tw(ind, 0.38, { Position = UDim2.fromOffset(x, 1), Size = UDim2.fromOffset(w, 26) }, ES.Quint)
+            sp(ind, "Position", UDim2.fromOffset(x, 1), SPRING.soft)
+            sp(ind, "Size", UDim2.fromOffset(w, 26), SPRING.soft)
         else
-            ind.Position = UDim2.fromOffset(x, 1); ind.Size = UDim2.fromOffset(w, 26)
+            if math.abs(ind.Position.X.Offset - x) > 0.4 or math.abs(ind.Size.X.Offset - w) > 0.4 then
+                spSnap(ind, "Position", UDim2.fromOffset(x, 1)); spSnap(ind, "Size", UDim2.fromOffset(w, 26))
+            end
         end
     end
 
@@ -1533,10 +1712,13 @@ function Tab:AddSubTab(name)
         renderPill()
         syncIndicator(prev ~= nil)
         if prev and self._wrap then
-            self._wrap.GroupTransparency = 0.55
-            tw(self._wrap, 0.3, { GroupTransparency = 0 }, ES.Quad)
+            self._wrap.GroupTransparency = 0.6
+            tw(self._wrap, 0.45, { GroupTransparency = 0 })
+            local wsc = win._tabScales[self._index]
+            if wsc then spSnap(wsc, "Scale", 0.985); sp(wsc, "Scale", 1, SPRING.soft) end
         end
     end
+    subObj._select = select
     pill.MouseButton1Click:Connect(select)
 
     table.insert(self._subTabs, subObj)
@@ -1559,7 +1741,7 @@ end
 local function registerSearch(sub, inst, getName, isSection)
     local win = sub._window
     if win and win._searchItems then
-        win._searchItems[#win._searchItems + 1] = { inst = inst, name = getName or nameOf(inst), section = isSection }
+        win._searchItems[#win._searchItems + 1] = { inst = inst, name = getName or nameOf(inst), section = isSection, sub = sub }
     end
 end
 
@@ -1607,15 +1789,22 @@ local function makeSwitch(host, compact, initial)
         Size = UDim2.fromOffset(K, K), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = WHITE, BorderSizePixel = 0,
     }, track)
     corner(knob, 999)
-    local sw = { value = initial }
+    local sw = { value = initial, down = false }
     function sw.render(animate)
         local on = sw.value
-        local t = animate and 0.25 or 0
-        tw(track, t, { BackgroundColor3 = on and Theme.accent or Theme.track })
-        tw(knob, t, {
-            Position = UDim2.new(0, on and (TW - K - pad) or pad, 0.5, 0),
-            BackgroundColor3 = on and WHITE or Theme.muted:Lerp(WHITE, 0.55),
-        }, ES.Back)
+        local w = K + (sw.down and 4 or 0)
+        local x = on and (TW - w - pad) or pad
+        tw(track, animate and 0.3 or 0, { BackgroundColor3 = on and Theme.accent or Theme.track })
+        tw(knob, animate and 0.3 or 0, { BackgroundColor3 = on and WHITE or Theme.muted:Lerp(WHITE, 0.55) })
+        if animate then
+            sp(knob, "Position", UDim2.new(0, x, 0.5, 0), SPRING.pop)
+            sp(knob, "Size", UDim2.fromOffset(w, K), SPRING.snap)
+        else
+            spSnap(knob, "Position", UDim2.new(0, x, 0.5, 0)); spSnap(knob, "Size", UDim2.fromOffset(w, K))
+        end
+    end
+    function sw.press(d)
+        if sw.down ~= d then sw.down = d; sw.render(true) end
     end
     sw.render(false)
     return sw
@@ -1642,7 +1831,7 @@ local function buildToggle(win, parent, order, opts, compact)
     local sw = makeSwitch(host, compact, value)
 
     local state = { hover = false, down = false }
-    local function render(animate) styleHost(host, hostStroke, compact, state, animate) end
+    local function render(animate) styleHost(host, hostStroke, compact, state, animate); sw.press(state.down) end
     interact(host, state, render)
     win._onTheme(function()
         render(true); sw.render(true); lbl.TextColor3 = Theme.text
@@ -1735,7 +1924,7 @@ local function buildSlider(win, parent, order, opts, compact)
     local hoverState = { hover = false, down = false }
     local function renderHandle()
         local s = HS + (dragging and 4 or (hoverState.hover and 2 or 0))
-        tw(handle, 0.18, { Size = UDim2.fromOffset(s, s) }, ES.Quint)
+        sp(handle, "Size", UDim2.fromOffset(s, s), SPRING.pop)
         tw(host, 0.18, { BackgroundColor3 = (hoverState.hover or dragging) and (compact and Theme.card2:Lerp(WHITE, 0.04) or Theme.cardHover) or (compact and Theme.card2 or Theme.card) })
         if hostStroke then
             tw(hostStroke, 0.18, { Color = (hoverState.hover or dragging) and Theme.accent:Lerp(Theme.border, 0.5) or Theme.border })
@@ -1746,8 +1935,9 @@ local function buildSlider(win, parent, order, opts, compact)
 
     local function visual(v, dur)
         local p = ratioOf(v)
-        tw(fill, dur, { Size = UDim2.fromScale(p, 1) }, ES.Quad)
-        tw(handle, dur, { Position = UDim2.new(p, 0, 0.5, 0) }, ES.Quad)
+        local preset = dur > 0.1 and SPRING.smooth or SPRING.snap
+        sp(fill, "Size", UDim2.fromScale(p, 1), preset)
+        sp(handle, "Position", UDim2.new(p, 0, 0.5, 0), preset)
         valLbl.Text = fmt(v)
     end
     local function commitPos(relX, width)
@@ -1935,11 +2125,16 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
     end
     local function layout(animate)
         local ch = value and contentH() or 0
-        local dur = animate and 0.42 or 0
+        local dur = animate and 0.6 or 0
         if value then holder.Visible = true end
-        tw(frame, dur, { Size = UDim2.new(1, 0, 0, targetH()) }, ES.Quint)
-        tw(holder, dur, { Size = UDim2.new(1, -sidePad * 2, 0, ch) }, ES.Quint)
-        tw(arrow, animate and 0.3 or 0, { Rotation = value and 90 or 0, TextColor3 = value and Theme.accent or Theme.muted }, ES.Quint)
+        local fs, hs = UDim2.new(1, 0, 0, targetH()), UDim2.new(1, -sidePad * 2, 0, ch)
+        if animate then
+            sp(frame, "Size", fs, SPRING.smooth); sp(holder, "Size", hs, SPRING.smooth)
+            sp(arrow, "Rotation", value and 90 or 0, SPRING.soft)
+        else
+            spSnap(frame, "Size", fs); spSnap(holder, "Size", hs); spSnap(arrow, "Rotation", value and 90 or 0)
+        end
+        tw(arrow, animate and 0.3 or 0, { TextColor3 = value and Theme.accent or Theme.muted })
         if not value then
             if animate then
                 task.delay(dur, function() if not value then holder.Visible = false end end)
@@ -1955,6 +2150,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
 
     local state = { hover = false, down = false }
     local function renderFrame(animate)
+        sw.press(state.down)
         local base = compact and Theme.card2 or Theme.card
         local hov = compact and base:Lerp(WHITE, 0.05) or Theme.cardHover
         local dur = animate and 0.18 or 0
@@ -2062,7 +2258,7 @@ function SubTab:AddDropdown(opts)
     end
     local setValueCb = opts.setValue
 
-    local HEAD, ITEM, GAP, MAXVIS = 44, 28, 3, 5
+    local HEAD, ITEM, GAP, MAXVIS = 44, 28, 3, 6
     local frame, frameStroke = makeHost(self._container, HEAD, false, self._LO(), false)
     frame.ClipsDescendants = true
 
@@ -2089,7 +2285,7 @@ function SubTab:AddDropdown(opts)
         Visible = false, ClipsDescendants = true,
     }, frame)
     local scroll = new("ScrollingFrame", {
-        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2,
+        Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 3,
         ScrollBarImageColor3 = Theme.accent, CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y,
     }, listHolder)
     new("UIListLayout", { Padding = UDim.new(0, GAP), SortOrder = Enum.SortOrder.LayoutOrder }, scroll)
@@ -2098,6 +2294,13 @@ function SubTab:AddDropdown(opts)
     local expanded = false
     local optionButtons = {}
     local api = {}
+    local function markInside(i)
+        if isPress(i) and win._popup and win._popup.card == frame then win._popup.insideAt = os.clock() end
+    end
+    frame.InputBegan:Connect(markInside)
+    listHolder.InputBegan:Connect(markInside)
+    scroll.InputBegan:Connect(markInside)
+    btn.InputBegan:Connect(markInside)
 
     local function listHeight()
         local vis = math.min(#options, MAXVIS)
@@ -2124,11 +2327,12 @@ function SubTab:AddDropdown(opts)
         expanded = false
         if win._currentExpanded == collapse then win._currentExpanded = nil end
         if win._popup and win._popup.card == frame then win._popup = nil end
-        tw(frame, 0.32, { Size = UDim2.new(1, 0, 0, HEAD) }, ES.Quint)
-        tw(chevron, 0.3, { Rotation = 0, TextColor3 = Theme.muted }, ES.Quint)
+        sp(frame, "Size", UDim2.new(1, 0, 0, HEAD), SPRING.smooth)
+        sp(chevron, "Rotation", 0, SPRING.soft)
+        tw(chevron, 0.3, { TextColor3 = Theme.muted })
         tw(btnStroke, 0.2, { Color = Theme.border })
-        tw(listHolder, 0.32, { Size = UDim2.new(1, -16, 0, 0) }, ES.Quint)
-        task.delay(0.33, function() if not expanded then listHolder.Visible = false end end)
+        sp(listHolder, "Size", UDim2.new(1, -16, 0, 0), SPRING.smooth)
+        task.delay(0.55, function() if not expanded then listHolder.Visible = false end end)
     end
 
     local function expand()
@@ -2136,11 +2340,32 @@ function SubTab:AddDropdown(opts)
         if expanded then return end
         expanded = true
         win._currentExpanded = collapse
-        win._popup = { card = frame, collapse = collapse }
+        win._popup = { card = frame, collapse = collapse, insideAt = os.clock() }
+        -- внутрішній список одразу прокручуємо до вибраного пункту
+        for i, opt in ipairs(options) do
+            if opt == value then
+                scroll.CanvasPosition = Vector2.new(0, math.max(0, (i - 1) * (ITEM + GAP) - (ITEM + GAP)))
+                break
+            end
+        end
+        -- і саму сторінку — щоб розгорнутий список було видно повністю
+        task.delay(0.05, function()
+            if not expanded then return end
+            local sf = frame:FindFirstAncestorWhichIsA("ScrollingFrame")
+            if not sf then return end
+            local sc = win._scale()
+            local bottom = frame.AbsolutePosition.Y + expandedHeight() * sc
+            local viewBottom = sf.AbsolutePosition.Y + sf.AbsoluteSize.Y
+            local diff = bottom - viewBottom + 10 * sc
+            if diff > 0 then
+                sp(sf, "CanvasPosition", sf.CanvasPosition + Vector2.new(0, diff / sc), SPRING.smooth)
+            end
+        end)
         listHolder.Visible = true
-        tw(frame, 0.38, { Size = UDim2.new(1, 0, 0, expandedHeight()) }, ES.Quint)
-        tw(listHolder, 0.38, { Size = UDim2.new(1, -16, 0, listHeight()) }, ES.Quint)
-        tw(chevron, 0.3, { Rotation = 180, TextColor3 = Theme.accent }, ES.Quint)
+        sp(frame, "Size", UDim2.new(1, 0, 0, expandedHeight()), SPRING.smooth)
+        sp(listHolder, "Size", UDim2.new(1, -16, 0, listHeight()), SPRING.smooth)
+        sp(chevron, "Rotation", 180, SPRING.soft)
+        tw(chevron, 0.3, { TextColor3 = Theme.accent })
         tw(btnStroke, 0.2, { Color = Theme.accent })
         refreshOptions()
     end
@@ -2172,6 +2397,7 @@ function SubTab:AddDropdown(opts)
                 BackgroundTransparency = 1, BorderSizePixel = 0,
             }, ob)
             corner(bar, 2)
+            ob.InputBegan:Connect(markInside)
             local rec = { btn = ob, bar = bar }
             optionButtons[opt] = rec
             ob.MouseEnter:Connect(function() styleOption(rec, opt, true) end)
@@ -2209,8 +2435,8 @@ function SubTab:AddDropdown(opts)
         if newCurrent ~= nil then applyValue(newCurrent) end
         buildOptions()
         if expanded then
-            tw(frame, 0.3, { Size = UDim2.new(1, 0, 0, expandedHeight()) }, ES.Quint)
-            tw(listHolder, 0.3, { Size = UDim2.new(1, -16, 0, listHeight()) }, ES.Quint)
+            sp(frame, "Size", UDim2.new(1, 0, 0, expandedHeight()), SPRING.smooth)
+            sp(listHolder, "Size", UDim2.new(1, -16, 0, listHeight()), SPRING.smooth)
         end
     end
     api.Get = function() return value end
@@ -2343,9 +2569,12 @@ function SubTab:AddKeybind(opts)
 
     local state = { hover = false, down = false }
     interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
+    btn.InputBegan:Connect(function(i) if isPress(i) then win._listenInsideAt = os.clock() end end)
     btn.MouseButton1Click:Connect(function()
         listening = not listening
         win._listening = listening
+        win._listenBtn = btn
+        win._cancelListen = function() if listening then stopListening(); render() end end
         render()
     end)
     win._track(UserInputService.InputBegan:Connect(function(input, gp)
@@ -2364,6 +2593,7 @@ function SubTab:AddKeybind(opts)
         render()
     end)
     render()
+    table.insert(win._closeHooks, function() if listening then stopListening(); render() end end)
 
     local api = {}
     function api.Get() return key end
@@ -2413,6 +2643,7 @@ function SubTab:AddTextbox(opts)
         if opts.callback then pcall(opts.callback, v, enter) end
     end
     input.FocusLost:Connect(commit)
+    table.insert(win._closeHooks, function() input:ReleaseFocus() end)
     win._onTheme(function()
         lbl.TextColor3 = Theme.text; input.TextColor3 = Theme.text; input.PlaceholderColor3 = Theme.muted
         tw(boxWrap, 0.3, { BackgroundColor3 = Theme.card2 }); tw(boxStroke, 0.3, { Color = Theme.border })
@@ -2449,7 +2680,7 @@ function SubTab:AddInfoRow(opts)
     }, host)
     corner(dot, 999)
     local dotPulse = loopTween(dot, 1.1, { BackgroundTransparency = 0.55 })
-    local colorFn = nil
+    local customColor = opts.color
     local function placeDot()
         dot.Position = UDim2.new(1, -(14 + valLbl.TextBounds.X + 10), 0.5, 0)
     end
@@ -2457,7 +2688,7 @@ function SubTab:AddInfoRow(opts)
     placeDot()
 
     local state = { hover = false, down = false }
-    interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
+    interact(host, state, function(a) if copyable then styleHost(host, hostStroke, false, state, a) end end)
     host.InputBegan:Connect(function(i)
         if copyable and isPress(i) then ripple(host, inputScreenPos(i), Theme.accent, win._scale(), 10) end
     end)
@@ -2474,17 +2705,16 @@ function SubTab:AddInfoRow(opts)
     end)
     win._onTheme(function()
         lbl.TextColor3 = Theme.muted
-        if not opts.color then valLbl.TextColor3 = Theme.text end
-        if colorFn then valLbl.TextColor3 = colorFn() end
+        valLbl.TextColor3 = customColor or Theme.text
     end)
 
     local api = {}
     function api.Get() return value end
     function api.Set(_, v, color)
         value = tostring(v or ""); valLbl.Text = value
-        if color then valLbl.TextColor3 = color end
+        if color then customColor = color; valLbl.TextColor3 = color end
     end
-    function api.SetColor(_, c) valLbl.TextColor3 = c end
+    function api.SetColor(_, c) customColor = c; valLbl.TextColor3 = c or Theme.text end
     function api.SetDot(_, c)
         if c then dot.BackgroundColor3 = c; dot.Visible = true else dot.Visible = false end
         placeDot()
@@ -2544,7 +2774,8 @@ function SubTab:AddProfileCard(opts)
     local idState = { hover = false, down = false }
     interact(idBtn, idState, function() tw(idBtn, 0.15, { TextColor3 = idState.hover and Theme.accent or Theme.muted }) end)
     idBtn.MouseButton1Click:Connect(function()
-        if copyText(userId) then win:Notify({ title = T("copied"), content = tostring(userId), type = "success", duration = 2 }) end
+        if copyText(userId) then win:Notify({ title = T("copied"), content = tostring(userId), type = "success", duration = 2 })
+        else win:Notify({ title = T("no_clipboard"), type = "warning", duration = 2.5 }) end
     end)
 
     local badge, badgeLbl, badgeStroke
@@ -2700,7 +2931,7 @@ Library.ConfigIgnore = {}      -- [flag] = true — не зберігати це
 local function fsAvailable()
     return typeof(writefile) == "function" and typeof(readfile) == "function" and typeof(isfile) == "function"
 end
-local function cfgName(name) return (tostring(name or ""):gsub("[^%w_%-]", "")) end
+local function cfgName(name) return (tostring(name or ""):gsub("[^%w_%-\128-\255]", "")) end
 local function cfgPath(name) return Library.ConfigFolder .. "/" .. cfgName(name) .. ".json" end
 local function ensureFolder()
     if typeof(isfolder) == "function" and typeof(makefolder) == "function" then
