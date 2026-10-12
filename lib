@@ -2615,6 +2615,13 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
             end,
         })
         ctlKb.sync(value)
+        if kb.key then
+            local _winkey = kb.key
+            table.insert(win._textElements, { type = "custom", update = function()
+                ctlKb.bind.name = T(_winkey)
+                win:_hudRefresh()
+            end })
+        end
         api.Bind = ctlKb.api
         -- стиснути label, щоб не залазив під аксесуари
         local function refit()
