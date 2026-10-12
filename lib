@@ -2513,7 +2513,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         Text = "", BackgroundTransparency = 1, AutoButtonColor = false, BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, headH),
     }, frame)
-    local arrow = label(header, "▸", compact and 11 or 13, Theme.muted, {
+    local arrow = label(header, "▼", compact and 9 or 10, Theme.muted, {
         Size = UDim2.fromOffset(16, headH), Position = UDim2.fromOffset(sidePad, 0), TextXAlignment = CENTER,
     })
     local lbl = label(header, opts.name or (opts.key and T(opts.key)) or flag or "Card", compact and 12 or 13, Theme.text, {
@@ -2551,7 +2551,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         local fs, hs = UDim2.new(1, 0, 0, targetH()), UDim2.new(1, -sidePad * 2, 0, ch)
         if animate then
             sp(frame, "Size", fs, SPRING.smooth); sp(holder, "Size", hs, SPRING.smooth)
-            sp(arrow, "Rotation", value and 90 or 0, SPRING.soft)
+            sp(arrow, "Rotation", value and 0 or -90, SPRING.soft)
         else
             spSnap(frame, "Size", fs); spSnap(holder, "Size", hs); spSnap(arrow, "Rotation", value and 90 or 0)
         end
