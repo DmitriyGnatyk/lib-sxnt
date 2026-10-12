@@ -2589,12 +2589,88 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         end, value)
     end
 
+    -- ═══════════════════════════════════════════════════════════
+    --  v4-fix: keybind у заголовку ExpandableCard
+    --  (поруч зі switch, як у buildToggle для mini-switch)
+    -- ═══════════════════════════════════════════════════════════
+    if opts.keybind and not compact then
+        local kb = type(opts.keybind) == "table" and opts.keybind or {}
+        local kbH = 26
+        local acc = new("Frame", {
+            Name = "CardAccessories", AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -64, 0.5, 0),     -- 12 (switch pad) + 44 (switch) + 8 (gap)
+            Size = UDim2.fromOffset(0, kbH), AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundTransparency = 1, ZIndex = 2,
+        }, header)
+        new("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5),
+            SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center,
+        }, acc)
+        local ctlKb = KeyMgr.buildControls(win, acc, {
+            name = kb.name or opts.name or (opts.key and T(opts.key)) or flag or "Card",
+            flag = kb.flag or (flag and (flag .. "_bind")),
+            default = kb.default, mode = kb.mode or "toggle",
+            modes = kb.modes or { "toggle", "hold" },
+            showMode = kb.showMode ~= false,
+            list = kb.list, compact = false, height = kbH,
+            onPress = kb.onPress, callback = kb.callback,
+            apply = function(v)
+                if v ~= value then setValue(v); fire(v) end
+            end,
+        })
+        ctlKb.sync(value)
+        api.Bind = ctlKb.api
+        -- стиснути label, щоб не залазив під аксесуари
+        local function refit()
+            local w = acc.AbsoluteSize.X / math.max(win._scale(), 0.01)
+            lbl.Size = UDim2.new(1, -(sidePad + 20 + 64 + 8 + w + 8), 1, 0)
+        end
+        acc:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+        refit()
+    end
+
     layout(false)
     api.frame, api.holder, api.list, api.group = frame, holder, list, group
     api.targetH = targetH
     api.get = function() return value end
     return api
 end
+
+    if opts.keybind and not compact then
+        local kb = type(opts.keybind) == "table" and opts.keybind or {}
+        local kbH = 26
+        local acc = new("Frame", {
+            Name = "CardAccessories", AnchorPoint = Vector2.new(1, 0.5),
+            Position = UDim2.new(1, -64, 0.5, 0),     -- 12 (switch pad) + 44 (switch) + 8 (gap)
+            Size = UDim2.fromOffset(0, kbH), AutomaticSize = Enum.AutomaticSize.X,
+            BackgroundTransparency = 1, ZIndex = 2,
+        }, header)
+        new("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5),
+            SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center,
+        }, acc)
+        local ctlKb = KeyMgr.buildControls(win, acc, {
+            name = kb.name or opts.name or (opts.key and T(opts.key)) or flag or "Card",
+            flag = kb.flag or (flag and (flag .. "_bind")),
+            default = kb.default, mode = kb.mode or "toggle",
+            modes = kb.modes or { "toggle", "hold" },
+            showMode = kb.showMode ~= false,
+            list = kb.list, compact = false, height = kbH,
+            onPress = kb.onPress, callback = kb.callback,
+            apply = function(v)
+                if v ~= value then setValue(v); fire(v) end
+            end,
+        })
+        ctlKb.sync(value)
+        api.Bind = ctlKb.api
+        -- стиснути label, щоб не залазив під аксесуари
+        local function refit()
+            local w = acc.AbsoluteSize.X / math.max(win._scale(), 0.01)
+            lbl.Size = UDim2.new(1, -(sidePad + 20 + 64 + 8 + w + 8), 1, 0)
+        end
+        acc:GetPropertyChangedSignal("AbsoluteSize"):Connect(refit)
+        refit()
+    end
 
 -- ═══════════════════════════════════════════════════════════
 --  SUBTAB COMPONENTS
