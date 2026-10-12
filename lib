@@ -1503,7 +1503,7 @@ function Library:CreateWindow(opts)
 
     vertLine.Visible = false
     local sidePanel = new("Frame", {
-        Name = "Sidebar", Size = UDim2.new(0, 160, 1, -60), Position = UDim2.fromOffset(8, 52),
+        Name = "Sidebar", Size = UDim2.new(0, 160, 0, 46), Position = UDim2.fromOffset(8, 52),
         BackgroundColor3 = Theme.card, BackgroundTransparency = 0.45, BorderSizePixel = 0,
     }, main)
     corner(sidePanel, 14)
@@ -1572,7 +1572,6 @@ function Library:CreateWindow(opts)
         tw(searchBox, 0.2, { BackgroundTransparency = 0.35 })
     end)
     table.insert(W._textElements, { type = "custom", update = function() searchInput.PlaceholderText = T("search") end })
-    main:GetPropertyChangedSignal("Size"):Connect(function() searchBox.Visible = (winW - 374) >= 80 end)
 
     -- ── ручка зміни розміру (якір — верхній лівий кут) ──
     local grip = new("TextButton", {
@@ -1626,6 +1625,19 @@ function Library:CreateWindow(opts)
         BackgroundTransparency = 1, ZIndex = 2,
     }, tabScroll)
     new("UIListLayout", { Padding = UDim.new(0, TAB_GAP), SortOrder = Enum.SortOrder.LayoutOrder }, tabList)
+
+    local function fitSidebar()
+        local count = #W._tabButtons
+        if count == 0 then return end
+        local contentH = count * TAB_H + math.max(0, count - 1) * TAB_GAP + 12
+        local maxH = winH - 52 - 8
+        sidePanel.Size = UDim2.new(0, 160, 0, math.min(contentH, maxH))
+    end
+
+    main:GetPropertyChangedSignal("Size"):Connect(function()
+        searchBox.Visible = (winW - 374) >= 80
+        fitSidebar()
+    end)
 
     local contentArea = new("Frame", {
         Size = UDim2.new(1, -186, 1, -60), Position = UDim2.fromOffset(178, 52), BackgroundTransparency = 1,
@@ -1732,6 +1744,7 @@ function Library:CreateWindow(opts)
             _C = Theme, _tw = tw, _corner = corner, _stroke = stroke, _LO = LO,
         }, Tab)
         table.insert(W._tabs, tabObj)
+        task.defer(fitSidebar)
 
         if index == 1 then switchTab(1, false) end   -- перша вкладка відкривається автоматично
         return tabObj
