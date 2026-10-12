@@ -866,6 +866,7 @@ Library.Themes = THEMES
 Library.ThemeOrder = THEME_ORDER
 Library.Defaults = { avatar = DEFAULT_AVATAR }
 Library._windows = {}
+Library.BindRespectGameProcessed = false   -- true: ігнорувати клавіші, які вже «з'їла» гра (як було раніше)
 Library._hud = {}   -- v4: стан HUD (позиції, видимість) — спільний для всіх вікон і конфігів
 
 -- Прапори. Геттер компонента — джерело правди, тому GetFlag завжди актуальний.
@@ -888,6 +889,10 @@ function Library:SetFlag(name, value)
         return
     end
     if f.set then pcall(f.set, value) end
+    if f.get then   -- слухачі отримують нормалізоване значення (напр. Color3, а не "#hex")
+        local ok, v = pcall(f.get)
+        if ok and v ~= nil then value = v end
+    end
     f.value = value
     fireListeners(n)
 end
@@ -915,7 +920,11 @@ function Library:GetThemeName() return currentThemeName end
 function Library:GetTheme() return Theme end
 function Library:AddTheme(name, tbl)
     if type(name) ~= "string" or type(tbl) ~= "table" then return false end
-    for k, v in pairs(THEMES.Ice) do if tbl[k] == nil then tbl[k] = v end end
+    tbl = table.clone(tbl)
+    -- cardHover / card2 / track обчислюються з card і bg, тому з Ice їх не копіюємо
+    for k, v in pairs(THEMES.Ice) do
+        if tbl[k] == nil and k ~= "cardHover" then tbl[k] = v end
+    end
     tbl.label = tbl.label or name
     if not THEMES[name] then table.insert(THEME_ORDER, name) end
     THEMES[name] = tbl
@@ -1037,8 +1046,11 @@ function Library:CreateWindow(opts)
         if w then pcall(function() w:Destroy() end) end
     end
     local gui = GetMainGui()
-    local stale = gui:FindFirstChild("Interface")
+    local stale = gui:FindFirstChild("SXNT_Interface")
     if stale then stale:Destroy() end
+    -- стара назва з версій <= 4.0: чіпаємо лише якщо це справді наш GUI (а не інтерфейс гри)
+    local legacy = gui:FindFirstChild("Interface")
+    if legacy and legacy:IsA("ScreenGui") and legacy:FindFirstChild("Main") and legacy:FindFirstChild("Icon") then legacy:Destroy() end
 
     local W = setmetatable({}, Window)
     W._connections = {}
@@ -1082,7 +1094,7 @@ function Library:CreateWindow(opts)
     local titleText = opts.title or "SXNT"
 
     local ui = new("ScreenGui", {
-        Name = "Interface", ZIndexBehavior = Enum.ZIndexBehavior.Sibling, ResetOnSpawn = false,
+        Name = "SXNT_Interface", ZIndexBehavior = Enum.ZIndexBehavior.Sibling, ResetOnSpawn = false,
         IgnoreGuiInset = true, DisplayOrder = opts.displayOrder or 100,
     })
     ui.Parent = gui
@@ -1251,6 +1263,7 @@ function Library:CreateWindow(opts)
     local topGlowGrad = gradient(topGlow, Theme.accent, Theme.accent2, 0)
     W.Main = main
     function W._scale() return uiScale.Scale end
+    W._decorExtra = {}
 
     local dotsBg = new("Frame", {
         Size = UDim2.new(1, 0, 1, -46), Position = UDim2.fromOffset(0, 46),
@@ -1267,6 +1280,12 @@ function Library:CreateWindow(opts)
                 pcall(function() if on then d:Play() else d:Pause() end end)
             end
         end
+    end
+
+    -- зовнішні компоненти (кільце профілю, пульс) реєструють свої tween-и: вони йдуть лише поки меню відкрите
+    function W._addDecor(d)
+        decorList[#decorList + 1] = d
+        if not isOpen then pcall(function() d:Pause() end) end
     end
 
     -- відкриття / закриття
@@ -1302,9 +1321,9 @@ function Library:CreateWindow(opts)
         local tok = animTok
         if W._currentExpanded then pcall(W._currentExpanded) end
         for _, h in ipairs(W._closeHooks) do pcall(h) end
+        stopGuard()          -- інакше при Immediate-сигналах охоронець одразу поверне Default
         restoreMouse()
         isOpen = false
-        stopGuard()
         applyBlur()
         tw(main, 0.3, { GroupTransparency = 1 })
         sp(uiScale, "Scale", baseScale * 0.94, SPRING.smooth)
@@ -1514,7 +1533,11 @@ function Library:CreateWindow(opts)
                 if q == "" then show = true
                 elseif it.section then show = false
                 else show = string.find(string.lower(tostring(it.name())), q, 1, true) ~= nil end
-                it.inst.Visible = show
+                if show then
+                    if it.hiddenBySearch then it.inst.Visible = true; it.hiddenBySearch = false end
+                elseif it.inst.Visible then
+                    it.inst.Visible = false; it.hiddenBySearch = true
+                end
             end
         end
         if q == "" then
@@ -1915,6 +1938,7 @@ function Window:Notify(opts)
         if closed then return end
         closed = true
         local idx = table.find(self._notifs, slot); if idx then table.remove(self._notifs, idx) end
+        if self._notifDismiss then self._notifDismiss[slot] = nil end
         sp(card, "Position", UDim2.new(1.15, 0, 0, 0), SPRING.smooth)
         tw(card, 0.32, { GroupTransparency = 1 })
         task.delay(0.2, function()
@@ -2128,7 +2152,7 @@ local function makeSwitch(host, compact, initial)
         Size = UDim2.fromOffset(K, K), AnchorPoint = Vector2.new(0, 0.5), BackgroundColor3 = WHITE, BorderSizePixel = 0,
     }, track)
     corner(knob, 999)
-    local sw = { value = initial, down = false }
+    local sw = { value = initial, down = false, track = track, knob = knob }
     function sw.render(animate)
         local on = sw.value
         local w = K + (sw.down and 4 or 0)
@@ -2251,8 +2275,9 @@ local function buildSlider(win, parent, order, opts, compact)
     if step <= 0 then step = 1 end
     local decimals = 0
     do
-        local frac = tostring(step):match("%.(%d+)")
-        if frac then decimals = math.min(#frac, 6) end
+        local txt = string.format("%.8f", step):gsub("0+$", "")   -- без наукової нотації (1e-05)
+        local frac = txt:match("%.(%d+)")
+        if frac then decimals = math.min(#frac, 8) end
     end
     local suffix = tostring(opts.suffix or "")
     local function snap(v)
@@ -2357,9 +2382,10 @@ local function buildSlider(win, parent, order, opts, compact)
     function api.Get() return value end
     function api.Set(_, v)
         v = snap(tonumber(v) or value)
+        local changed = v ~= value
         value = v
         visual(v, 0.25)
-        if opts.callback then safe(opts.callback, v) end
+        if changed and opts.callback then safe(opts.callback, v) end
     end
     if flag then
         Library:RegisterFlag(flag, function() return value end, function(v) api.Set(nil, v) end, value)
@@ -2906,14 +2932,14 @@ function SubTab:AddExpandableCard(opts)
 end
 
 local function addMiniSwitch(win, g, o)
-    local host = buildToggle(win, g.holder, g:nextOrder(), o or {}, true)
+    local host, api = buildToggle(win, g.holder, g:nextOrder(), o or {}, true)
     g:add(host, function() return 36 end)
-    return host
+    return host, api
 end
 local function addMiniSlider(win, g, o)
-    local _, _, host = buildSlider(win, g.holder, g:nextOrder(), o or {}, true)
+    local _, api, host = buildSlider(win, g.holder, g:nextOrder(), o or {}, true)
     g:add(host, function() return 46 end)
-    return host
+    return host, api
 end
 local function addMiniButton(win, g, o)
     local btn = buildButton(win, g.holder, g:nextOrder(), o or {}, true)
@@ -3068,7 +3094,16 @@ function Window:_initBinds()
 
     self._track(UserInputService.InputBegan:Connect(function(input, gp)
         local k = keyFromInput(input)
-        if not k or gp or win._listening or win._destroyed then return end
+        if not k or win._listening or win._destroyed then return end
+        -- клавіатура: блокуємо лише під час набору тексту (раніше gp глушив і клавіші, зайняті грою);
+        -- миша: gp лишається, щоб клік по самому меню не спрацьовував як бінд
+        if k == "MB2" or k == "MB3" then
+            if gp then return end
+        elseif UserInputService:GetFocusedTextBox() then
+            return
+        elseif gp and Library.BindRespectGameProcessed then
+            return
+        end
         pressed[k] = true
         -- серед збігів виграють найдовші комбінації: «Q+1» перекриває одиночну «Q»
         local best, hits = 0, nil
@@ -3283,7 +3318,7 @@ function KeyMgr.buildControls(win, container, o)
     local H = o.height or (compact and 22 or 28)
     local listening = false
     local preview
-    local keyBtn, keyStroke, modeBtn
+    local keyBtn, keyStroke, modeBtn, delBtn
 
     local bind = o.bind or win:_addBind({
         id = o.id, name = o.name, keys = o.default, mode = o.mode, modes = o.modes, list = o.list,
@@ -3292,6 +3327,7 @@ function KeyMgr.buildControls(win, container, o)
 
     local function render()
         local txt = comboText(bind.keys)
+        if delBtn then delBtn.Visible = (#bind.keys > 0) and not listening end
         if listening then keyBtn.Text = preview or "..."
         else keyBtn.Text = txt or T("none") end
         local active = bind.active and bind.mode ~= "press"
@@ -3339,6 +3375,28 @@ function KeyMgr.buildControls(win, container, o)
         modeBtn.MouseButton1Click:Connect(cycleMode)
     end
 
+    -- маленький «×»: прибрати бінд одним кліком (для обов'язкових, як клавіша меню, його немає)
+    if not o.required then
+        delBtn = new("TextButton", {
+            Text = "×", _font = "b", TextSize = compact and 13 or 15, TextColor3 = Theme.muted,
+            Size = UDim2.fromOffset(compact and 16 or 20, H), BackgroundColor3 = Theme.card2, BackgroundTransparency = 0.25,
+            BorderSizePixel = 0, AutoButtonColor = false, LayoutOrder = 3, Visible = false,
+        }, container)
+        corner(delBtn, compact and 6 or 8)
+        local dst = { hover = false, down = false }
+        interact(delBtn, dst, function() tw(delBtn, 0.15, { TextColor3 = dst.hover and Theme.red or Theme.muted }) end)
+        delBtn.MouseButton1Click:Connect(function()
+            if listening or #bind.keys == 0 then return end
+            if bind.mode == "hold" and bind.active then win:_setBindState(bind, false, true) end
+            bind.setKeysRaw({})
+            render()
+            Library:_commit(o.flag, comboString(bind.keys))
+            fireKeyChange()
+            win:_hudRefresh()
+        end)
+        win._onTheme(function() delBtn.BackgroundColor3 = Theme.card2; delBtn.TextColor3 = Theme.muted end)
+    end
+
     keyBtn.InputBegan:Connect(function(i) if isPress(i) then win._listenInsideAt = os.clock() end end)
     keyBtn.MouseButton1Click:Connect(function()
         if listening then
@@ -3365,6 +3423,7 @@ function KeyMgr.buildControls(win, container, o)
     bind.onKeysUI = render
     bind.onState = render
     win._onTheme(render)
+    table.insert(win._textElements, { type = "custom", update = render })   -- мова: чип режиму та «None»
     render()
 
     if o.flag then
@@ -3729,7 +3788,7 @@ function ColorUI.buildPanel(win, parent, m, o)
     hex.FocusLost:Connect(function()
         tw(hexStroke, 0.2, { Color = Theme.border })
         local c = fromHex(hex.Text)
-        if c then m.setColor(c, true, "hex") else refresh() end
+        if c then m.setColor(c, true, "hex"); hex.Text = "#" .. toHex(m.color()) else refresh() end
     end)
 
     win._onTheme(function()
@@ -3970,7 +4029,14 @@ function SubTab:AddInfoRow(opts)
         BorderSizePixel = 0, Visible = opts.dot ~= nil,
     }, host)
     corner(dot, 999)
-    local dotPulse = loopTween(dot, 1.1, { BackgroundTransparency = 0.55 })
+    local dotPulse
+    local function syncPulse()
+        if dot.Visible and not dotPulse then
+            dotPulse = loopTween(dot, 1.1, { BackgroundTransparency = 0.55 })
+            if win._addDecor then win._addDecor(dotPulse) end
+        end
+    end
+    syncPulse()
     local customColor = opts.color
     local function placeDot()
         dot.Position = UDim2.new(1, -(14 + valLbl.TextBounds.X + 10), 0.5, 0)
@@ -4008,7 +4074,7 @@ function SubTab:AddInfoRow(opts)
     function api.SetColor(_, c) customColor = c; valLbl.TextColor3 = c or Theme.text end
     function api.SetDot(_, c)
         if c then dot.BackgroundColor3 = c; dot.Visible = true else dot.Visible = false end
-        placeDot()
+        syncPulse(); placeDot()
     end
     registerSearch(self, host, function() return lbl.Text .. " " .. value end)
     return host, api
@@ -4030,7 +4096,8 @@ function SubTab:AddProfileCard(opts)
     corner(ring, 999)
     local ringStroke = stroke(ring, WHITE, 2, 0.05)
     local ringGrad = gradient(ringStroke, Theme.accent, Theme.accent2, 0)
-    spin(ringGrad, 4)
+    local ringSpin = spin(ringGrad, 4)
+    if win._addDecor then win._addDecor(ringSpin) end
     local init = label(host, dname:sub(1, 1):upper(), 20, WHITE, {
         _font = "b", Size = UDim2.fromOffset(48, 48), Position = UDim2.fromOffset(19, 17),
         BackgroundTransparency = 0, BackgroundColor3 = Theme.accent, TextXAlignment = CENTER,
@@ -4394,6 +4461,7 @@ function Window:AddWatermark(opts)
     end
     frame.Destroying:Connect(stopStats)
     self._watermark = api
+    Library:_commit("sxnt_wm_visible", hud.wmVisible == true)
     return api
 end
 function Window:SetWatermark(v, opts)
@@ -4568,6 +4636,7 @@ function Window:AddKeybindList(opts)
     self._kb = api
     refresh()
     win:_hudLayout(true)
+    Library:_commit("sxnt_kb_visible", hud.kbVisible == true)
     return api
 end
 function Window:SetKeybindList(v)
@@ -4634,7 +4703,8 @@ function Library:ExportConfig()
         out.__theme, out.__font, out.__language = currentThemeName, currentFontName, currentLang
     end
     for name in pairs(Flags) do
-        if not Library.ConfigIgnore[name] then
+        local skip = (name == "sxnt_theme" or name == "sxnt_font") and not Library.ConfigSaveAppearance
+        if not Library.ConfigIgnore[name] and not skip then
             local v = Library:GetFlag(name)
             local t = typeof(v)
             if t == "boolean" or t == "number" or t == "string" then out[name] = v
@@ -4660,7 +4730,8 @@ function Library:ImportConfig(tbl)
         end
     end
     for name, v in pairs(tbl) do
-        if Flags[name] and not Library.ConfigIgnore[name] then Library:SetFlag(name, v); n += 1 end
+        local skip = (name == "sxnt_theme" or name == "sxnt_font") and not Library.ConfigSaveAppearance
+        if Flags[name] and not Library.ConfigIgnore[name] and not skip then Library:SetFlag(name, v); n += 1 end
     end
     -- позиції HUD застосовуємо після прапорів (прапор «пристикувати» міг змінити їх)
     if Library.ConfigSaveHud ~= false and type(tbl.__hud) == "table" then
@@ -4709,7 +4780,12 @@ function Library:ListConfigs()
 end
 function Library:DeleteConfig(name)
     if typeof(delfile) ~= "function" or cfgName(name) == "" then return false end
-    return (pcall(delfile, cfgPath(name)))
+    local ok = pcall(delfile, cfgPath(name))
+    if ok and Library:GetAutoload() == cfgName(name) then   -- не лишаємо autoload на неіснуючий конфіг
+        local p = Library.ConfigFolder .. "/autoload.txt"
+        if not pcall(delfile, p) then pcall(writefile, p, "") end
+    end
+    return ok
 end
 function Library:SetAutoload(name)
     if not fsAvailable() then return false end
@@ -4886,9 +4962,10 @@ function Window:AddSettingsTab(opts)
             end
             pickApi = s:AddDropdown({
                 key = "cfg_pick", options = { T("cfg_none") }, default = T("cfg_none"),
-                callback = function(v) if v ~= T("cfg_none") then nameApi:Set(v) end end,
+                callback = function(v) if table.find(Library:ListConfigs(), v) then nameApi:Set(v) end end,   -- не залежить від мови заглушки
             })
             refreshList()
+            table.insert(win._textElements, { type = "custom", update = refreshList })   -- заглушка «(none)» перекладається
             local function currentName()
                 local n = nameApi:Get()
                 if cfgName(n) == "" then notify("warning", T("cfg_empty")); return nil end
