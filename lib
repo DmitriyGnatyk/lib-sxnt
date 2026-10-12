@@ -2513,9 +2513,13 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         Text = "", BackgroundTransparency = 1, AutoButtonColor = false, BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, headH),
     }, frame)
-    local arrow = label(header, "▼", compact and 24 or 26, Theme.muted, {
-        Size = UDim2.fromOffset(20, headH), Position = UDim2.fromOffset(sidePad, 0),
+    local AS = compact and 14 or 16   -- розмір стрілки, крути тут
+    local arrow = label(header, "▼", 0, Theme.muted, {
+        Size = UDim2.fromOffset(AS, AS),
+        AnchorPoint = Vector2.new(0, 0.5),
+        Position = UDim2.new(0, sidePad, 0.5, 0),
         TextXAlignment = CENTER, TextYAlignment = Enum.TextYAlignment.Center,
+        TextScaled = true,
     })
     local lbl = label(header, opts.name or (opts.key and T(opts.key)) or flag or "Card", compact and 12 or 13, Theme.text, {
         Position = UDim2.fromOffset(sidePad + 20, 0), Size = UDim2.new(1, -(sidePad + 20 + 62), 1, 0),
