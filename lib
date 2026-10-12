@@ -1,9 +1,3 @@
---[[
-    SXNT UI Library  v3.3
-    ─ зміна шрифту на льоту (30+ шрифтів), 28 тем (темні й світлі)
-    ─ пружинний рушій анімацій, повний аудит і виправлення багів
-]]
-
 local Players          = game:GetService("Players")
 local Workspace        = game:GetService("Workspace")
 local RunService       = game:GetService("RunService")
@@ -151,6 +145,7 @@ end
 local Theme = {}
 local currentThemeName = "Ice"
 local BLACK = Color3.new(0, 0, 0)
+local accentOv = nil   -- v4: користувацький акцент поверх теми
 local function applyThemeToMirror(name)
     local t = getTheme(name)
     for k in pairs(Theme) do Theme[k] = nil end
@@ -167,6 +162,12 @@ local function applyThemeToMirror(name)
     local a = t.accent
     local lum = 0.299 * a.R + 0.587 * a.G + 0.114 * a.B
     Theme.onAccent  = t.onAccent  or (lum > 0.6 and Color3.fromRGB(16, 16, 22) or WHITE)
+    if accentOv then
+        Theme.accent, Theme.accent2 = accentOv[1], accentOv[2]
+        local ac = accentOv[1]
+        local l2 = 0.299 * ac.R + 0.587 * ac.G + 0.114 * ac.B
+        Theme.onAccent = l2 > 0.6 and Color3.fromRGB(16, 16, 22) or WHITE
+    end
     currentThemeName = THEMES[name] and name or "Ice"
 end
 applyThemeToMirror("Ice")
@@ -282,6 +283,77 @@ local VALID_LANGS = { ENG = true, UA = true, TR = true, RUS = true }
 for lang, v in pairs({ ENG = "Font", UA = "Шрифт", TR = "Yazı tipi", RUS = "Шрифт" }) do
     if DEFAULT_L[lang] then DEFAULT_L[lang].font = DEFAULT_L[lang].font or v end
 end
+
+-- v4: переклади нових елементів (додаються до вбудованих; RegisterTranslations можна перекривати)
+for lang, add in pairs({
+    ENG = {
+        mode_toggle = "Toggle", mode_hold = "Hold", mode_press = "Press", rainbow = "Rainbow",
+        hud_keybinds = "Keybinds", tab_settings = "Settings",
+        sub_appearance = "Appearance", sub_hud = "HUD", sub_keys = "Keys", sub_config = "Config",
+        sec_theme = "Theme & colors", sec_interface = "Interface", sec_sound = "Sound", sec_hud = "Watermark & binds list",
+        sec_binds = "Menu & binds", sec_configs = "Configs", sec_transfer = "Transfer",
+        accent_color = "Accent color", accent_reset = "Reset accent color", blur = "Background blur",
+        hud_watermark = "Watermark", hud_keybinds_show = "Keybind list", hud_only_active = "Show only active binds",
+        hud_docked = "Dock list under watermark", hud_draggable = "Allow dragging HUD", hud_reset = "Reset HUD position",
+        binds_master = "Binds enabled", keys_hint = "Click a key button and hold a combination (e.g. Q + 1), then release. Right-click or the mode chip switches Toggle / Hold. Backspace clears, Esc cancels.",
+        cfg_name = "Config name", cfg_pick = "Saved configs", cfg_save = "Save config", cfg_load = "Load config",
+        cfg_delete = "Delete config", cfg_autoload = "Set as autoload", cfg_export = "Copy config as JSON", cfg_import = "Import JSON",
+        cfg_nofs = "File system unavailable: use copy / import below.", cfg_saved = "Config saved", cfg_loaded = "Config loaded",
+        cfg_deleted = "Config deleted", cfg_err = "Error", cfg_empty = "Enter a config name first", cfg_copied = "Copied to clipboard",
+        cfg_autoset = "Autoload set", cfg_none = "(none)", cfg_imported = "Imported",
+    },
+    UA = {
+        mode_toggle = "Перемик.", mode_hold = "Утримання", mode_press = "Натиск.", rainbow = "Веселка",
+        hud_keybinds = "Бінди", tab_settings = "Налаштування",
+        sub_appearance = "Вигляд", sub_hud = "HUD", sub_keys = "Клавіші", sub_config = "Конфіги",
+        sec_theme = "Тема й кольори", sec_interface = "Інтерфейс", sec_sound = "Звук", sec_hud = "Водяний знак і список біндів",
+        sec_binds = "Меню й бінди", sec_configs = "Конфіги", sec_transfer = "Перенесення",
+        accent_color = "Колір акценту", accent_reset = "Скинути колір акценту", blur = "Розмиття фону",
+        hud_watermark = "Водяний знак", hud_keybinds_show = "Список біндів", hud_only_active = "Лише активні бінди",
+        hud_docked = "Стикувати список під знаком", hud_draggable = "Дозволити тягнути HUD", hud_reset = "Скинути позицію HUD",
+        binds_master = "Бінди увімкнено", keys_hint = "Натисни кнопку клавіші й тримай комбінацію (напр. Q + 1), потім відпусти. ПКМ або чип режиму перемикає Перемикач / Утримання. Backspace стирає, Esc скасовує.",
+        cfg_name = "Назва конфігу", cfg_pick = "Збережені конфіги", cfg_save = "Зберегти конфіг", cfg_load = "Завантажити конфіг",
+        cfg_delete = "Видалити конфіг", cfg_autoload = "Автозавантаження", cfg_export = "Копіювати конфіг як JSON", cfg_import = "Імпорт JSON",
+        cfg_nofs = "Файлова система недоступна: використовуй копіювання / імпорт нижче.", cfg_saved = "Конфіг збережено", cfg_loaded = "Конфіг завантажено",
+        cfg_deleted = "Конфіг видалено", cfg_err = "Помилка", cfg_empty = "Спочатку введи назву конфігу", cfg_copied = "Скопійовано в буфер",
+        cfg_autoset = "Автозавантаження встановлено", cfg_none = "(немає)", cfg_imported = "Імпортовано",
+    },
+    TR = {
+        mode_toggle = "Aç/Kapa", mode_hold = "Basılı", mode_press = "Bas", rainbow = "Gökkuşağı",
+        hud_keybinds = "Tuşlar", tab_settings = "Ayarlar",
+        sub_appearance = "Görünüm", sub_hud = "HUD", sub_keys = "Tuşlar", sub_config = "Yapılandırma",
+        sec_theme = "Tema ve renkler", sec_interface = "Arayüz", sec_sound = "Ses", sec_hud = "Filigran ve tuş listesi",
+        sec_binds = "Menü ve tuşlar", sec_configs = "Yapılandırmalar", sec_transfer = "Aktarım",
+        accent_color = "Vurgu rengi", accent_reset = "Vurgu rengini sıfırla", blur = "Arka plan bulanıklığı",
+        hud_watermark = "Filigran", hud_keybinds_show = "Tuş listesi", hud_only_active = "Yalnızca aktif tuşlar",
+        hud_docked = "Listeyi filigrana yapıştır", hud_draggable = "HUD sürüklemeye izin ver", hud_reset = "HUD konumunu sıfırla",
+        binds_master = "Tuşlar etkin", keys_hint = "Tuş düğmesine tıkla, bir kombinasyonu basılı tut (ör. Q + 1) ve bırak. Sağ tık veya mod çipi Aç/Kapa / Basılı arasında geçiş yapar. Backspace siler, Esc iptal eder.",
+        cfg_name = "Yapılandırma adı", cfg_pick = "Kayıtlı yapılandırmalar", cfg_save = "Kaydet", cfg_load = "Yükle",
+        cfg_delete = "Sil", cfg_autoload = "Otomatik yükle", cfg_export = "JSON olarak kopyala", cfg_import = "JSON içe aktar",
+        cfg_nofs = "Dosya sistemi yok: aşağıdaki kopyala / içe aktar'ı kullan.", cfg_saved = "Kaydedildi", cfg_loaded = "Yüklendi",
+        cfg_deleted = "Silindi", cfg_err = "Hata", cfg_empty = "Önce bir ad gir", cfg_copied = "Panoya kopyalandı",
+        cfg_autoset = "Otomatik yükleme ayarlandı", cfg_none = "(yok)", cfg_imported = "İçe aktarıldı",
+    },
+    RUS = {
+        mode_toggle = "Перекл.", mode_hold = "Удержание", mode_press = "Нажатие", rainbow = "Радуга",
+        hud_keybinds = "Бинды", tab_settings = "Настройки",
+        sub_appearance = "Вид", sub_hud = "HUD", sub_keys = "Клавиши", sub_config = "Конфиги",
+        sec_theme = "Тема и цвета", sec_interface = "Интерфейс", sec_sound = "Звук", sec_hud = "Водяной знак и список биндов",
+        sec_binds = "Меню и бинды", sec_configs = "Конфиги", sec_transfer = "Перенос",
+        accent_color = "Цвет акцента", accent_reset = "Сбросить цвет акцента", blur = "Размытие фона",
+        hud_watermark = "Водяной знак", hud_keybinds_show = "Список биндов", hud_only_active = "Только активные бинды",
+        hud_docked = "Стыковать список под знаком", hud_draggable = "Разрешить двигать HUD", hud_reset = "Сбросить позицию HUD",
+        binds_master = "Бинды включены", keys_hint = "Нажми кнопку клавиши и держи комбинацию (напр. Q + 1), затем отпусти. ПКМ или чип режима переключает Переключатель / Удержание. Backspace стирает, Esc отменяет.",
+        cfg_name = "Название конфига", cfg_pick = "Сохранённые конфиги", cfg_save = "Сохранить конфиг", cfg_load = "Загрузить конфиг",
+        cfg_delete = "Удалить конфиг", cfg_autoload = "Автозагрузка", cfg_export = "Копировать конфиг как JSON", cfg_import = "Импорт JSON",
+        cfg_nofs = "Файловая система недоступна: используй копирование / импорт ниже.", cfg_saved = "Конфиг сохранён", cfg_loaded = "Конфиг загружен",
+        cfg_deleted = "Конфиг удалён", cfg_err = "Ошибка", cfg_empty = "Сначала введи название конфига", cfg_copied = "Скопировано в буфер",
+        cfg_autoset = "Автозагрузка установлена", cfg_none = "(нет)", cfg_imported = "Импортировано",
+    },
+}) do
+    for k, v in pairs(add) do DEFAULT_L[lang][k] = v end
+end
+
 local currentLang = "ENG"
 local L = DEFAULT_L
 
@@ -610,12 +682,15 @@ end
 -- Легкі частинки: кожна рухається власним tween-ом (без циклу кожен кадр)
 local function makeParticles(holder, count, colorFn)
     local list = {}
+    local live, paused = setmetatable({}, { __mode = "k" }), false
     local function drift(p)
         if not p.Parent then return end
+        if paused then live[p] = false; return end   -- зупинена частинка чекає на resume
         local tween = TweenService:Create(p, TweenInfo.new(math.random(70, 150) / 10, ES.Sine, ED.InOut), {
             Position = UDim2.new(math.random(), 0, math.random(), 0),
             BackgroundTransparency = math.random(55, 90) / 100,
         })
+        live[p] = tween
         tween.Completed:Connect(function(state)
             if state == Enum.PlaybackState.Completed then drift(p) end
         end)
@@ -631,6 +706,22 @@ local function makeParticles(holder, count, colorFn)
         corner(dot, 999)
         list[i] = dot
         task.delay(math.random() * 2, function() drift(dot) end)
+    end
+    -- v4: поки вікно закрите, частинки не анімуються (економія кадру)
+    function list.pause()
+        paused = true
+        for _, t in pairs(live) do
+            if t then pcall(function() t:Pause() end) end
+        end
+    end
+    function list.resume()
+        if not paused then return end
+        paused = false
+        for p, t in pairs(live) do
+            if not p.Parent then live[p] = nil
+            elseif t then pcall(function() t:Play() end)
+            else drift(p) end
+        end
     end
     return list
 end
@@ -770,11 +861,12 @@ end
 --  LIBRARY TABLE / PUBLIC API
 -- ═══════════════════════════════════════════════════════════
 local Library = {}
-Library.Version = "3.3"
+Library.Version = "4.0"
 Library.Themes = THEMES
 Library.ThemeOrder = THEME_ORDER
 Library.Defaults = { avatar = DEFAULT_AVATAR }
 Library._windows = {}
+Library._hud = {}   -- v4: стан HUD (позиції, видимість) — спільний для всіх вікон і конфігів
 
 -- Прапори. Геттер компонента — джерело правди, тому GetFlag завжди актуальний.
 function Library:GetFlag(name, default)
@@ -972,6 +1064,8 @@ function Library:CreateWindow(opts)
     W._closeHooks = {}
     W._tabScales = {}
     W._fontHooks = {}
+    W._kbAutoShow = opts.keybindList ~= false
+    W._bindsOn = true
 
     local conns = W._connections
     local function track(c) conns[#conns + 1] = c; return c end
@@ -1025,6 +1119,23 @@ function Library:CreateWindow(opts)
         end)
     end
 
+    -- v4: охоронець миші підключений лише поки меню відкрите (раніше RenderStepped працював завжди)
+    local guardConns
+    local function stopGuard()
+        if guardConns then
+            for _, c in ipairs(guardConns) do c:Disconnect() end
+            guardConns = nil
+        end
+    end
+    local function startGuard()
+        if guardConns then return end
+        guardConns = {
+            RunService.RenderStepped:Connect(forceMouse),
+            UserInputService:GetPropertyChangedSignal("MouseBehavior"):Connect(forceMouse),
+            UserInputService:GetPropertyChangedSignal("MouseIconEnabled"):Connect(forceMouse),
+        }
+    end
+
     -- ── опційний blur фону (поки меню відкрите) ──
     local blurFx
     local blurEnabled = opts.blur == true
@@ -1045,6 +1156,7 @@ function Library:CreateWindow(opts)
     ui.Destroying:Connect(function()
         W._destroyed = true
         if blurFx then pcall(function() blurFx:Destroy() end) end
+        stopGuard()
         restoreMouse()
         for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
         table.clear(conns)
@@ -1085,8 +1197,15 @@ function Library:CreateWindow(opts)
     }, icon)
     corner(iconRing, 999)
     local iconRingStroke = stroke(iconRing, Theme.accent, 2.5, 0)
-    loopTween(iconRing, 1.1, { Size = UDim2.new(1, 12, 1, 12) })
-    loopTween(iconRingStroke, 1.1, { Transparency = 0.85, Thickness = 1 })
+    local iconLoops = {
+        loopTween(iconRing, 1.1, { Size = UDim2.new(1, 12, 1, 12) }),
+        loopTween(iconRingStroke, 1.1, { Transparency = 0.85, Thickness = 1 }),
+    }
+    local function setIconLoops(on)   -- пульс іконки не потрібен, поки вона схована
+        for _, t in ipairs(iconLoops) do
+            pcall(function() if on then t:Play() else t:Pause() end end)
+        end
+    end
     onTheme(function()
         tw(icon, 0.35, { BackgroundColor3 = Theme.accent })
         tw(iconRingStroke, 0.35, { Color = Theme.accent })
@@ -1127,7 +1246,7 @@ function Library:CreateWindow(opts)
     local mainGrad = gradient(bgFill, Theme.bg:Lerp(Theme.accent, 0.07), Theme.bg, 135)
     local aurora = new("Frame", { Name = "Aurora", Size = UDim2.new(1, 0, 0, 150), BackgroundColor3 = Theme.accent, BorderSizePixel = 0, ZIndex = 0 }, main)
     new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(0.8, 1) }, aurora)
-    loopTween(aurora, 4.5, { BackgroundTransparency = 0.3 })
+    local decorList = { loopTween(aurora, 4.5, { BackgroundTransparency = 0.3 }), borderSpin }
     local topGlow = new("Frame", { Name = "TopGlow", Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 1 }, main)
     local topGlowGrad = gradient(topGlow, Theme.accent, Theme.accent2, 0)
     W.Main = main
@@ -1139,6 +1258,16 @@ function Library:CreateWindow(opts)
     }, main)
     local function dotColor(i) return (i % 3 == 0) and Theme.accent2 or Theme.accent end
     local dots = makeParticles(dotsBg, 20, dotColor)
+    decorList[#decorList + 1] = dots
+    local function setDecor(on)   -- v4: декоративні анімації йдуть лише поки меню відкрите
+        for _, d in ipairs(decorList) do
+            if type(d) == "table" then
+                if on then d.resume() else d.pause() end
+            else
+                pcall(function() if on then d:Play() else d:Pause() end end)
+            end
+        end
+    end
 
     -- відкриття / закриття
     function W:Open()
@@ -1147,7 +1276,7 @@ function Library:CreateWindow(opts)
         local tok = animTok
         savedMouse = { Behavior = UserInputService.MouseBehavior, Icon = UserInputService.MouseIconEnabled }
         sp(iconScale, "Scale", 0, SPRING.smooth)
-        task.delay(0.3, function() if animTok == tok and icon.Parent then icon.Visible = false end end)
+        task.delay(0.3, function() if animTok == tok and icon.Parent then icon.Visible = false; setIconLoops(false) end end)
         if not main.Visible then
             main.GroupTransparency = 1
             spSnap(uiScale, "Scale", baseScale * 0.9)
@@ -1155,7 +1284,8 @@ function Library:CreateWindow(opts)
         end
         tw(main, 0.4, { GroupTransparency = 0 })
         sp(uiScale, "Scale", baseScale, SPRING.pop)
-        forceMouse()
+        startGuard(); forceMouse()
+        setDecor(true)
         pcall(function() borderSpin:Play() end)
         applyBlur()
         for i, b in ipairs(W._tabButtons) do
@@ -1174,6 +1304,7 @@ function Library:CreateWindow(opts)
         for _, h in ipairs(W._closeHooks) do pcall(h) end
         restoreMouse()
         isOpen = false
+        stopGuard()
         applyBlur()
         tw(main, 0.3, { GroupTransparency = 1 })
         sp(uiScale, "Scale", baseScale * 0.94, SPRING.smooth)
@@ -1181,8 +1312,10 @@ function Library:CreateWindow(opts)
             if animTok ~= tok or not main.Parent then return end
             main.Visible = false
             pcall(function() borderSpin:Pause() end)
+            setDecor(false)
             if not hideIcon then
                 icon.Visible = true
+                setIconLoops(true)
                 spSnap(iconScale, "Scale", 0)
                 sp(iconScale, "Scale", 1, SPRING.pop)
             end
@@ -1196,6 +1329,7 @@ function Library:CreateWindow(opts)
     function W:Destroy()
         if self._destroyed then return end
         self._destroyed = true
+        stopGuard()
         restoreMouse()
         isOpen = false
         for _, c in ipairs(conns) do pcall(function() c:Disconnect() end) end
@@ -1205,9 +1339,6 @@ function Library:CreateWindow(opts)
         if idx then table.remove(Library._windows, idx) end
     end
 
-    track(RunService.RenderStepped:Connect(forceMouse))
-    track(UserInputService:GetPropertyChangedSignal("MouseBehavior"):Connect(forceMouse))
-    track(UserInputService:GetPropertyChangedSignal("MouseIconEnabled"):Connect(forceMouse))
 
     -- ── плавне перетягування ──
     local function clampMain(c)
@@ -1304,7 +1435,7 @@ function Library:CreateWindow(opts)
     corner(avatarRing, 999)
     local avatarRingStroke = stroke(avatarRing, WHITE, 2, 0.1)
     local avatarRingGrad = gradient(avatarRingStroke, Theme.accent, Theme.accent2, 0)
-    spin(avatarRingGrad, 3.5)
+    decorList[#decorList + 1] = spin(avatarRingGrad, 3.5)
     local avatarInit = label(profile, firstName:sub(1, 1):upper(), 14, WHITE, {
         _font = "b", Size = UDim2.fromOffset(30, 30), Position = UDim2.new(0, 5, 0.5, -15),
         BackgroundTransparency = 0, BackgroundColor3 = Theme.accent, TextXAlignment = CENTER,
@@ -1587,7 +1718,8 @@ function Library:CreateWindow(opts)
     track(UserInputService.InputChanged:Connect(function(i)
         local s = W._sliderDragState
         if s and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
-            s.setValue(i.Position.X - s.track.AbsolutePosition.X, s.track.AbsoluteSize.X)
+            if s.setPos then s.setPos(inputScreenPos(i))
+            else s.setValue(i.Position.X - s.track.AbsolutePosition.X, s.track.AbsoluteSize.X) end
         end
     end))
     track(UserInputService.InputEnded:Connect(function(i)
@@ -1616,14 +1748,18 @@ function Library:CreateWindow(opts)
         end
     end))
 
+    -- v4: клавіша меню — звичайний бінд (підтримує комбінації, один набір слухачів на вікно)
+    W._menuKey = nil
     if not IS_MOBILE then
         W._menuKey = opts.menuKey or Enum.KeyCode.F4
-        track(UserInputService.InputBegan:Connect(function(input, gp)
-            if gp or W._listening then return end
-            if input.UserInputType == Enum.UserInputType.Keyboard and input.KeyCode == W._menuKey then
-                W:Toggle()
-            end
-        end))
+        W._menuBind = W:_addBind({
+            id = "__menu", name = "Menu", keys = W._menuKey, mode = "press", list = false,
+            onPress = function() W:Toggle() end,
+            onKeys = function(keys)
+                local ok, kc = pcall(function() return Enum.KeyCode[keys[1]] end)
+                W._menuKey = ok and kc or nil
+            end,
+        })
     end
 
     -- ── зовнішній інтерфейс (сумісність із v1) ──
@@ -1634,9 +1770,9 @@ function Library:CreateWindow(opts)
         if not isOpen then
             if hideIcon then
                 sp(iconScale, "Scale", 0, SPRING.smooth)
-                task.delay(0.3, function() if hideIcon and icon.Parent then icon.Visible = false end end)
+                task.delay(0.3, function() if hideIcon and icon.Parent then icon.Visible = false; setIconLoops(false) end end)
             else
-                icon.Visible = true; sp(iconScale, "Scale", 1, SPRING.pop)
+                icon.Visible = true; setIconLoops(true); sp(iconScale, "Scale", 1, SPRING.pop)
             end
         end
     end
@@ -1647,7 +1783,7 @@ function Library:CreateWindow(opts)
     W._GetVolume = getSoundVolume
     W._SetVolume = function(v) soundVolume = v end
     W._menuKeyGetter = function() return W._menuKey end
-    W._menuKeySetter = function(k) W._menuKey = k end
+    W._menuKeySetter = function(k) W._menuKey = k; if W._menuBind then W._menuBind.api:Set(k, true) end end
     W._createTab = createTab
 
     -- тема: живе перефарбування + (опційно) колбек для повної перебудови
@@ -1696,7 +1832,9 @@ function Library:CreateWindow(opts)
         end
     end
 
+    setDecor(false)   -- вікно стартує закритим
     table.insert(Library._windows, W)
+    if opts.watermark then W:AddWatermark(type(opts.watermark) == "table" and opts.watermark or {}) end
     return W
 end
 
@@ -1929,6 +2067,7 @@ end
 -- ═══════════════════════════════════════════════════════════
 --  COMPONENT BUILDERS (спільні для SubTab і міні-елементів)
 -- ═══════════════════════════════════════════════════════════
+local KeyMgr, ColorUI = {}, {}   -- v4: заповнюються нижче (потрібні в buildToggle)
 -- пошук: реєструємо хост компонента та функцію, що повертає його поточну назву
 local function nameOf(inst, fallback)
     return function()
@@ -2038,7 +2177,8 @@ local function buildToggle(win, parent, order, opts, compact)
         if descLbl then descLbl.TextColor3 = Theme.muted end
     end)
 
-    local function apply(v) value = v; sw.value = v; sw.render(true) end
+    local ctlKb   -- v4: бінд у рядку (стан синхронізується з перемикачем)
+    local function apply(v) value = v; sw.value = v; sw.render(true); if ctlKb then ctlKb.sync(v) end end
     local function fire(v) if opts.callback then safe(opts.callback, v) end end
     host.MouseButton1Click:Connect(function()
         apply(not value)
@@ -2052,6 +2192,48 @@ local function buildToggle(win, parent, order, opts, compact)
         v = v == true
         if v == value then return end
         apply(v); fire(v)
+    end
+
+    -- v4: вбудовані аксесуари справа: колір (opts.color) і клавіша / комбінація (opts.keybind)
+    if opts.keybind or opts.color then
+        local H = compact and 22 or 26
+        local rightPad = 12 + (compact and 36 or 44) + 8
+        local acc = KeyMgr.accessories(host, rightPad, H)
+        local function fit()
+            local pad = rightPad + acc.AbsoluteSize.X / math.max(win._scale(), 0.01) + 10
+            lbl.Size = hasDesc and UDim2.new(1, -pad, 0, 18) or UDim2.new(1, -pad, 1, 0)
+            if descLbl then descLbl.Size = UDim2.new(1, -pad, 0, 18) end
+        end
+        acc:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+        if opts.keybind then
+            local kb = type(opts.keybind) == "table" and opts.keybind or {}
+            local nm = kb.name or opts.name or (opts.key and T(opts.key)) or flag or "Toggle"
+            ctlKb = KeyMgr.buildControls(win, acc, {
+                name = nm, flag = kb.flag or (flag and (flag .. "_bind")), default = kb.default, mode = kb.mode or "toggle",
+                modes = kb.modes or { "toggle", "hold" }, showMode = kb.showMode ~= false, list = kb.list,
+                compact = true, height = H, onPress = kb.onPress, callback = kb.callback,
+                apply = function(v)
+                    if v ~= value then api.Set(nil, v); Library:_commit(flag, value) end
+                end,
+            })
+            ctlKb.sync(value)
+            if opts.key and not kb.name and not opts.name then
+                table.insert(win._textElements, { type = "custom", update = function()
+                    ctlKb.bind.name = T(opts.key); win:_hudRefresh()
+                end })
+            end
+            api.Bind = ctlKb.api
+        end
+        if opts.color then
+            local co = opts.color
+            if type(co) ~= "table" then co = { default = co } end
+            local chipObj = ColorUI.chip(win, acc, 0, {
+                default = co.default or co[1], flag = co.flag or (flag and (flag .. "_color")), callback = co.callback,
+                alpha = co.alpha, rainbow = co.rainbow, presets = co.presets, live = co.live,
+            }, H)
+            api.Color = chipObj.api
+        end
+        fit()
     end
     if flag then
         Library:RegisterFlag(flag, function() return value end, function(v) api.Set(nil, v) end, value)
@@ -2766,13 +2948,6 @@ local function copyText(s)
 end
 Library.Copy = copyText
 
-local function keyFromName(v)
-    if typeof(v) == "EnumItem" then return v end
-    if type(v) ~= "string" or v == "" or v == "None" then return nil end
-    local ok, k = pcall(function() return Enum.KeyCode[v] end)
-    return ok and k or nil
-end
-
 function SubTab:AddDivider()
     local line = new("Frame", {
         Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.border, BorderSizePixel = 0, LayoutOrder = self._LO(),
@@ -2786,78 +2961,940 @@ function SubTab:AddDivider()
     return line
 end
 
--- Keybind: клік → «...» → натисни клавішу (Esc скасує, Backspace очистить)
+
+-- ═══════════════════════════════════════════════════════════
+--  v4: КЛАВІШІ, КОМБІНАЦІЇ ТА БІНДИ
+-- ═══════════════════════════════════════════════════════════
+-- Клавіша = назва KeyCode ("Q", "One", "LeftShift") або "MB2"/"MB3" (права/середня кнопка миші).
+-- Комбінація = до 3 клавіш разом: "Q+One", "LeftShift+F". Одинарна клавіша ("F") сумісна зі старими конфігами.
+local KEY_PRETTY = {
+    One = "1", Two = "2", Three = "3", Four = "4", Five = "5", Six = "6", Seven = "7", Eight = "8", Nine = "9", Zero = "0",
+    LeftShift = "LShift", RightShift = "RShift", LeftControl = "LCtrl", RightControl = "RCtrl",
+    LeftAlt = "LAlt", RightAlt = "RAlt", Return = "Enter", Backquote = "`", Minus = "-", Equals = "=",
+    LeftBracket = "[", RightBracket = "]", BackSlash = "\\", Semicolon = ";", Quote = "'", Comma = ",",
+    Period = ".", Slash = "/", CapsLock = "Caps", Insert = "Ins", Delete = "Del", PageUp = "PgUp", PageDown = "PgDn",
+    KeypadZero = "Num0", KeypadOne = "Num1", KeypadTwo = "Num2", KeypadThree = "Num3", KeypadFour = "Num4",
+    KeypadFive = "Num5", KeypadSix = "Num6", KeypadSeven = "Num7", KeypadEight = "Num8", KeypadNine = "Num9",
+    KeypadPlus = "Num+", KeypadMinus = "Num-", KeypadMultiply = "Num*", KeypadDivide = "Num/",
+    KeypadPeriod = "Num.", KeypadEnter = "NumEnter", MB2 = "RMB", MB3 = "MMB",
+}
+local KEY_REVERSE = {}
+for k, v in pairs(KEY_PRETTY) do KEY_REVERSE[string.lower(v)] = k end
+local MODE_ORDER = { "toggle", "hold", "press" }
+
+local KEY_LOWER
+local function resolveKeyName(s)
+    s = tostring(s):gsub("^%s+", ""):gsub("%s+$", "")
+    if s == "" then return nil end
+    local pretty = KEY_REVERSE[string.lower(s)]
+    if pretty then return pretty end
+    local ok, v = pcall(function() return Enum.KeyCode[s] end)
+    if ok and v then return s end
+    if not KEY_LOWER then   -- нечутливий до регістру пошук ("q" → "Q"), будується один раз
+        KEY_LOWER = {}
+        for _, item in ipairs(Enum.KeyCode:GetEnumItems()) do KEY_LOWER[string.lower(item.Name)] = item.Name end
+    end
+    return KEY_LOWER[string.lower(s)]
+end
+
+local function keyFromInput(input)
+    local t = input.UserInputType
+    if t == Enum.UserInputType.Keyboard then
+        local n = input.KeyCode.Name
+        if n ~= "Unknown" then return n end
+    elseif t == Enum.UserInputType.MouseButton2 then
+        return "MB2"
+    elseif t == Enum.UserInputType.MouseButton3 then
+        return "MB3"
+    end
+    return nil
+end
+local function validKeyName(n)
+    if n == "MB2" or n == "MB3" then return true end
+    local ok, v = pcall(function() return Enum.KeyCode[n] end)
+    return ok and v ~= nil
+end
+-- приймає: nil, "Q", "Q+One", "LShift + 1", Enum.KeyCode, { "Q", Enum.KeyCode.One }
+local function parseCombo(v)
+    local out = {}
+    local function add(n)
+        if not n or #out >= 3 or not validKeyName(n) then return end
+        for _, e in ipairs(out) do if e == n then return end end
+        out[#out + 1] = n
+    end
+    if v == nil then return out end
+    if typeof(v) == "EnumItem" then
+        add(v.Name)
+    elseif type(v) == "table" then
+        for _, k in ipairs(v) do
+            if typeof(k) == "EnumItem" then add(k.Name) else add(resolveKeyName(k)) end
+        end
+    elseif type(v) == "string" then
+        if v == "" or v == "None" then return out end
+        for part in v:gmatch("[^+]+") do add(resolveKeyName(part)) end
+    end
+    return out
+end
+local function comboString(keys) return #keys > 0 and table.concat(keys, "+") or "None" end
+local function comboText(keys)
+    if #keys == 0 then return nil end
+    local t = {}
+    for i, k in ipairs(keys) do t[i] = KEY_PRETTY[k] or k end
+    return table.concat(t, " + ")
+end
+local function firstKeyCode(keys)
+    local k = keys[1]
+    if k and k ~= "MB2" and k ~= "MB3" then return Enum.KeyCode[k] end
+    return nil
+end
+
+-- ── менеджер біндів (по одному на вікно; один набір слухачів на всі бінди) ──
+function Window:_initBinds()
+    if self._binds then return end
+    local win = self
+    self._binds = {}
+    local pressed, pending = {}, {}
+    self._pressed = pressed
+    table.insert(self._closeHooks, function()
+        if win._listening and win._cancelListen then pcall(win._cancelListen) end
+    end)
+
+    local function flush(k)
+        local p = pending[k]
+        if not p then return end
+        pending[k] = nil
+        for _, b in ipairs(p) do if b.enabled then win:_fireBind(b, true) end end
+    end
+
+    self._track(UserInputService.InputBegan:Connect(function(input, gp)
+        local k = keyFromInput(input)
+        if not k or gp or win._listening or win._destroyed then return end
+        pressed[k] = true
+        -- серед збігів виграють найдовші комбінації: «Q+1» перекриває одиночну «Q»
+        local best, hits = 0, nil
+        for _, b in ipairs(win._binds) do
+            if b.keySet[k] and b.n > 0 and b.enabled and (win._bindsOn ~= false or b.id == "__menu") then
+                local all = true
+                for i = 1, b.n do if not pressed[b.keys[i]] then all = false; break end end
+                if all then
+                    if b.n > best then best = b.n; hits = { b }
+                    elseif b.n == best then hits[#hits + 1] = b end
+                end
+            end
+        end
+        if not hits then return end
+        -- довша комбінація скасовує відкладені коротші
+        if best > 1 then
+            for key in pairs(hits[1].keySet) do pending[key] = nil end
+        end
+        -- якщо існує довша комбінація з цією клавішею, даємо їй 0.14 с шанс завершитись (інакше затримки немає)
+        local longer = false
+        for _, b in ipairs(win._binds) do
+            if b.enabled and b.n > best and b.keySet[k] then longer = true; break end
+        end
+        if longer then
+            pending[k] = hits
+            task.delay(0.14, function() if pending[k] == hits then flush(k) end end)
+        else
+            for _, b in ipairs(hits) do win:_fireBind(b, true) end
+        end
+    end))
+    self._track(UserInputService.InputEnded:Connect(function(input)
+        local k = keyFromInput(input)
+        if not k then return end
+        flush(k)   -- швидкий тап теж рахується
+        pressed[k] = nil
+        for _, b in ipairs(win._binds) do
+            if b.mode == "hold" and b.active and b.keySet[k] then win:_fireBind(b, false) end
+        end
+    end))
+    pcall(function()
+        self._track(UserInputService.WindowFocusReleased:Connect(function()
+            table.clear(pressed); table.clear(pending)
+            for _, b in ipairs(win._binds) do
+                if b.mode == "hold" and b.active then win:_fireBind(b, false) end
+            end
+        end))
+    end)
+end
+
+function Window:_setBindState(b, v, user)
+    if b.active == v then return end
+    b.active = v
+    if user and b.apply then safe(b.apply, v) end
+    if user and b.onToggle then safe(b.onToggle, v) end
+    if b.onState then b.onState() end
+    self:_hudRefresh()
+end
+function Window:_fireBind(b, down)
+    if b.mode == "hold" then
+        if b.active ~= down then self:_setBindState(b, down, true) end
+    elseif b.mode == "toggle" then
+        if down then self:_setBindState(b, not b.active, true) end
+    elseif down then
+        b.flash = os.clock()
+        if b.onState then b.onState() end
+        self:_hudRefresh()
+        task.delay(0.4, function() if not self._destroyed then self:_hudRefresh() end end)   -- погасити підсвітку
+    end
+    if down and b.onPress then safe(b.onPress) end
+end
+
+function Window:_removeBind(b)
+    local idx = table.find(self._binds, b)
+    if idx then table.remove(self._binds, idx) end
+    b.enabled = false
+    self:_hudRefresh()
+end
+
+-- def: { id, name, keys, mode, list, modes, apply(state), onPress(), onToggle(state), onKeys(keys), onState() }
+function Window:_addBind(def)
+    self:_initBinds()
+    local win = self
+    local b = {
+        id = def.id, name = def.name or "Bind", keys = {}, n = 0, keySet = {}, mode = def.mode or "toggle",
+        modes = def.modes or MODE_ORDER, active = false, list = def.list ~= false, enabled = true, flash = 0,
+        apply = def.apply, onPress = def.onPress, onToggle = def.onToggle, onKeys = def.onKeys, onState = def.onState,
+    }
+    if not table.find(MODE_ORDER, b.mode) then b.mode = "toggle" end
+    local function setKeysRaw(keys)
+        b.keys = keys; b.n = #keys; b.keySet = {}
+        for _, k in ipairs(keys) do b.keySet[k] = true end
+    end
+    setKeysRaw(parseCombo(def.keys))
+    b.setKeysRaw = setKeysRaw
+
+    local api = {}
+    function api.Get() return comboString(b.keys) end
+    function api.GetKeys() return table.clone(b.keys) end
+    function api.GetText() return comboText(b.keys) end
+    function api.Set(_, v, silent)
+        setKeysRaw(parseCombo(v))
+        if b.onKeysUI then b.onKeysUI() end
+        if b.onKeys and not silent then safe(b.onKeys, b.keys) end
+        win:_hudRefresh()
+    end
+    function api.GetMode() return b.mode end
+    function api.SetMode(_, m)
+        if not table.find(b.modes, m) then return end
+        if b.mode == "hold" and b.active and m ~= "hold" then win:_setBindState(b, false, true) end
+        b.mode = m
+        if b.onState then b.onState() end
+        win:_hudRefresh()
+    end
+    function api.IsActive() return b.active end
+    function api.SetActive(_, v) win:_setBindState(b, v and true or false, true) end
+    function api.SetEnabled(_, v) b.enabled = v ~= false end
+    function api.SetListed(_, v) b.list = v ~= false; win:_hudRefresh() end
+    function api.SetName(_, n) b.name = tostring(n); win:_hudRefresh() end
+    function api.Remove() win:_removeBind(b) end
+    b.api = api
+
+    table.insert(self._binds, b)
+    if b.list and b.id ~= "__menu" and not self._kb then
+        local vis = Library._hud.kbVisible
+        if vis == nil then vis = self._kbAutoShow ~= false end
+        self:AddKeybindList({ visible = vis })
+    end
+    self:_hudRefresh()
+    return b
+end
+
+-- Публічний API: Window:AddBind{ name, keys = "Q+One", mode = "toggle"|"hold"|"press", onPress, onToggle, list }
+-- onToggle(state) — для режимів toggle/hold; onPress() — при кожному натисканні.
+function Window:AddBind(opts)
+    opts = opts or {}
+    local b = self:_addBind({
+        id = opts.id, name = opts.name, keys = opts.keys or opts.default,
+        mode = opts.mode or (opts.onToggle and "toggle" or "press"),
+        list = opts.list, modes = opts.modes, apply = opts.apply, onPress = opts.onPress, onToggle = opts.onToggle,
+    })
+    return b.api
+end
+
+-- Захоплення клавіш: тримай кілька клавіш разом і відпусти. Esc — скасувати, Backspace/Delete — очистити.
+function Window:_beginCapture(h, btn)
+    if self._listening and self._cancelListen then pcall(self._cancelListen) end
+    local win = self
+    local held, order, conns = {}, {}, {}
+    local done = false
+    local function stop()
+        if done then return end
+        done = true
+        for _, c in ipairs(conns) do c:Disconnect() end
+        table.clear(conns)
+        win._cancelListen = nil
+        -- відкладено: щоб остання відпущена клавіша не спрацювала одразу як бінд
+        task.defer(function() if not win._cancelListen then win._listening = false end end)
+    end
+    local function cancel()
+        if done then return end
+        stop()
+        if h.cancel then safe(h.cancel) end
+    end
+    self._listening = true
+    self._listenBtn = btn
+    self._listenInsideAt = os.clock()
+    self._cancelListen = cancel
+    conns[1] = UserInputService.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            if input.KeyCode == Enum.KeyCode.Escape then cancel(); return end
+            if #order == 0 and (input.KeyCode == Enum.KeyCode.Backspace or input.KeyCode == Enum.KeyCode.Delete) then
+                stop(); if h.done then safe(h.done, {}, true) end
+                return
+            end
+        end
+        local k = keyFromInput(input)
+        if k and not held[k] and #order < 3 then
+            held[k] = true; order[#order + 1] = k
+            if h.preview then safe(h.preview, order) end
+        end
+    end)
+    conns[2] = UserInputService.InputEnded:Connect(function(input)
+        local k = keyFromInput(input)
+        if k and held[k] then
+            held[k] = nil
+            if next(held) == nil and #order > 0 then
+                stop(); if h.done then safe(h.done, table.clone(order), false) end
+            end
+        end
+    end)
+    return cancel
+end
+
+-- Контейнер для «аксесуарів» справа в рядку (колір, режим, кнопка бінду…)
+function KeyMgr.accessories(host, rightPad, H)
+    local c = new("Frame", {
+        Name = "Accessories", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -rightPad, 0.5, 0),
+        Size = UDim2.fromOffset(0, H), AutomaticSize = Enum.AutomaticSize.X, BackgroundTransparency = 1,
+    }, host)
+    new("UIListLayout", {
+        FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5),
+        SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center,
+    }, c)
+    return c
+end
+
+-- o: { name, flag, default, mode, modes, showMode, list, compact, height, bind, required,
+--      apply, onPress, onToggle, callback, allowRightClick }
+-- Повертає { bind, api, keyButton, render, sync(state) }
+function KeyMgr.buildControls(win, container, o)
+    local compact = o.compact
+    local H = o.height or (compact and 22 or 28)
+    local listening = false
+    local preview
+    local keyBtn, keyStroke, modeBtn
+
+    local bind = o.bind or win:_addBind({
+        id = o.id, name = o.name, keys = o.default, mode = o.mode, modes = o.modes, list = o.list,
+        apply = o.apply, onPress = o.onPress, onToggle = o.onToggle,
+    })
+
+    local function render()
+        local txt = comboText(bind.keys)
+        if listening then keyBtn.Text = preview or "..."
+        else keyBtn.Text = txt or T("none") end
+        local active = bind.active and bind.mode ~= "press"
+        tw(keyBtn, 0.18, {
+            TextColor3 = listening and Theme.accent or (txt and Theme.text or Theme.muted),
+            BackgroundColor3 = active and Theme.card2:Lerp(Theme.accent, 0.14) or Theme.card2,
+        })
+        tw(keyStroke, 0.2, { Color = (listening or active) and Theme.accent or Theme.border })
+        if modeBtn then
+            modeBtn.Text = T("mode_" .. bind.mode)
+            tw(modeBtn, 0.18, { TextColor3 = active and Theme.accent or Theme.muted })
+        end
+    end
+
+    keyBtn = new("TextButton", {
+        Text = "", _font = "b", TextSize = compact and 11 or 12, TextColor3 = Theme.text,
+        Size = UDim2.fromOffset(0, H), AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Theme.card2,
+        BorderSizePixel = 0, AutoButtonColor = false, LayoutOrder = 2,
+    }, container)
+    corner(keyBtn, compact and 6 or 8)
+    new("UIPadding", { PaddingLeft = UDim.new(0, compact and 8 or 10), PaddingRight = UDim.new(0, compact and 8 or 10) }, keyBtn)
+    new("UISizeConstraint", { MinSize = Vector2.new(compact and 44 or 64, H) }, keyBtn)
+    keyStroke = stroke(keyBtn, Theme.border, 1)
+
+    local function fireKeyChange()
+        if bind.onKeys then safe(bind.onKeys, bind.keys) end
+        if o.callback then safe(o.callback, firstKeyCode(bind.keys), comboString(bind.keys), table.clone(bind.keys)) end
+    end
+    local function cycleMode()
+        local modes = bind.modes
+        local idx = table.find(modes, bind.mode) or 0
+        bind.api:SetMode(modes[(idx % #modes) + 1])
+        if o.flag then Library:_commit(o.flag .. "_mode", bind.mode) end
+        render()
+    end
+
+    if o.showMode then
+        modeBtn = new("TextButton", {
+            Text = "", _font = "r", TextSize = 10, TextColor3 = Theme.muted, Size = UDim2.fromOffset(0, H),
+            AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Theme.card2, BackgroundTransparency = 0.25,
+            BorderSizePixel = 0, AutoButtonColor = false, LayoutOrder = 1,
+        }, container)
+        corner(modeBtn, compact and 6 or 8)
+        new("UIPadding", { PaddingLeft = UDim.new(0, 7), PaddingRight = UDim.new(0, 7) }, modeBtn)
+        modeBtn.MouseButton1Click:Connect(cycleMode)
+    end
+
+    keyBtn.InputBegan:Connect(function(i) if isPress(i) then win._listenInsideAt = os.clock() end end)
+    keyBtn.MouseButton1Click:Connect(function()
+        if listening then
+            if win._cancelListen then win._cancelListen() end
+            return
+        end
+        listening = true; preview = nil; render()
+        win:_beginCapture({
+            preview = function(keys) preview = (comboText(keys) or "") .. " …"; keyBtn.Text = preview end,
+            done = function(keys)
+                listening = false; preview = nil
+                if o.required and #keys == 0 then render(); return end   -- напр. клавішу меню не можна стерти
+                bind.setKeysRaw(keys)
+                render()
+                Library:_commit(o.flag, comboString(keys))
+                fireKeyChange()
+                win:_hudRefresh()
+            end,
+            cancel = function() listening = false; preview = nil; render() end,
+        }, keyBtn)
+    end)
+    if o.showMode or o.allowRightClick then keyBtn.MouseButton2Click:Connect(cycleMode) end
+
+    bind.onKeysUI = render
+    bind.onState = render
+    win._onTheme(render)
+    render()
+
+    if o.flag then
+        Library:RegisterFlag(o.flag, function() return comboString(bind.keys) end, function(v)
+            local keys = parseCombo(v)
+            if o.required and #keys == 0 then return end
+            bind.setKeysRaw(keys); render(); win:_hudRefresh(); fireKeyChange()
+        end, comboString(bind.keys))
+        Library:RegisterFlag(o.flag .. "_mode", function() return bind.mode end, function(v)
+            if table.find(bind.modes, v) then bind.api:SetMode(v); render() end
+        end, bind.mode)
+    end
+
+    return {
+        bind = bind, api = bind.api, keyButton = keyBtn, render = render,
+        sync = function(state) bind.active = state and true or false; render(); win:_hudRefresh() end,
+    }
+end
+
+-- Keybind: клік → тримай клавіші (можна комбінацію) → відпусти. Esc — скасувати, Backspace — очистити.
+-- opts: name, key, flag, default ("Q+One" / Enum.KeyCode), mode, modes, showMode, list, listName,
+--       target (прапор / функція / об'єкт з :Set) — що вмикати цим біндом,
+--       onPress(), onToggle(state), callback(keyCode, combo, keys)
 function SubTab:AddKeybind(opts)
     opts = opts or {}
     local win = self._window
     local flag = opts.flag
-    local key = keyFromName(opts.default)
     local host, hostStroke = makeHost(self._container, 44, false, self._LO(), false)
     local lbl = label(host, opts.name or (opts.key and T(opts.key)) or flag or "Keybind", 13, Theme.text, {
-        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -130, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -190, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
     })
     regText(win, lbl, opts.key)
-    local btn = new("TextButton", {
-        Text = "", Size = UDim2.fromOffset(100, 28), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -10, 0.5, 0),
-        BackgroundColor3 = Theme.card2, BorderSizePixel = 0, AutoButtonColor = false,
-    }, host)
-    corner(btn, 8)
-    local btnStroke = stroke(btn, Theme.border, 1)
-    local keyLbl = label(btn, "", 12, Theme.text, { _font = "b", Size = UDim2.fromScale(1, 1), TextXAlignment = CENTER })
-    local listening = false
+    local container = KeyMgr.accessories(host, 10, 28)
 
-    local function render()
-        keyLbl.Text = listening and "..." or (key and key.Name or T("none"))
-        tw(keyLbl, 0.15, { TextColor3 = listening and Theme.accent or (key and Theme.text or Theme.muted) })
-        tw(btnStroke, 0.18, { Color = listening and Theme.accent or Theme.border })
+    local targetApply
+    local t = opts.target
+    if type(t) == "string" then targetApply = function(v) Library:SetFlag(t, v) end
+    elseif type(t) == "function" then targetApply = t
+    elseif type(t) == "table" and t.Set then targetApply = function(v) t:Set(v) end end
+    local hasState = targetApply ~= nil or opts.onToggle ~= nil
+    local mode = opts.mode or (hasState and "toggle" or "press")
+    local showMode = opts.showMode
+    if showMode == nil then showMode = hasState end
+
+    local ctl = KeyMgr.buildControls(win, container, {
+        name = opts.listName or opts.name or flag or "Bind", flag = flag, default = opts.default, mode = mode, modes = opts.modes,
+        showMode = showMode, list = opts.list, apply = targetApply, onPress = opts.onPress, onToggle = opts.onToggle,
+        callback = opts.callback, allowRightClick = true, bind = opts.bind, required = opts.required,
+    })
+    if opts.key then
+        table.insert(win._textElements, { type = "custom", update = function()
+            if not opts.listName then ctl.bind.name = T(opts.key); win:_hudRefresh() end
+        end })
+        if not opts.name and not opts.listName then ctl.bind.name = T(opts.key) end
     end
-    local function stopListening()
-        listening = false
-        task.defer(function() win._listening = false end)
-    end
-    local function setKey(k, fire)
-        key = k; stopListening(); render()
-        Library:_commit(flag, key and key.Name or "None")
-        if fire and opts.callback then safe(opts.callback, k) end
-    end
+    if type(t) == "string" then Library:OnFlagChanged(t, function(v) ctl.sync(v == true) end) end
 
     local state = { hover = false, down = false }
     interact(host, state, function(a) styleHost(host, hostStroke, false, state, a) end)
-    btn.InputBegan:Connect(function(i) if isPress(i) then win._listenInsideAt = os.clock() end end)
-    btn.MouseButton1Click:Connect(function()
-        listening = not listening
-        win._listening = listening
-        win._listenBtn = btn
-        win._cancelListen = function() if listening then stopListening(); render() end end
-        render()
-    end)
-    win._track(UserInputService.InputBegan:Connect(function(input, gp)
-        if input.UserInputType ~= Enum.UserInputType.Keyboard then return end
-        if listening then
-            if input.KeyCode == Enum.KeyCode.Escape then stopListening(); render()
-            elseif input.KeyCode == Enum.KeyCode.Backspace then setKey(nil, true)
-            else setKey(input.KeyCode, true) end
-            return
-        end
-        if key and not gp and input.KeyCode == key and opts.onPress then safe(opts.onPress) end
-    end))
-    win._onTheme(function()
-        lbl.TextColor3 = Theme.text
-        tw(btn, 0.3, { BackgroundColor3 = Theme.card2 })
-        render()
-    end)
-    render()
-    table.insert(win._closeHooks, function() if listening then stopListening(); render() end end)
+    win._onTheme(function() lbl.TextColor3 = Theme.text end)
 
-    local api = {}
-    function api.Get() return key end
-    function api.Set(_, k) setKey(keyFromName(k), false) end
-    if flag then
-        Library:RegisterFlag(flag, function() return key and key.Name or "None" end,
-            function(v) setKey(keyFromName(v), true) end, key and key.Name or "None")
-    end
+    local api = setmetatable({
+        -- сумісність із v3: Get() віддає KeyCode першої клавіші
+        Get = function() return firstKeyCode(ctl.bind.keys) end,
+        GetCombo = function() return comboString(ctl.bind.keys) end,
+        Set = function(_, v) ctl.bind.api:Set(v, true); Library:_commit(flag, comboString(ctl.bind.keys)) end,
+    }, { __index = ctl.api })
     registerSearch(self, host)
     return host, api
+end
+
+
+-- ═══════════════════════════════════════════════════════════
+--  v4: COLOR PICKER
+-- ═══════════════════════════════════════════════════════════
+local PRESET_COLORS = { "FF3B5C", "FF8A3B", "FFD23B", "4BE37B", "3BDDFF", "4B7BFF", "A35BFF", "FF5BC8", "FFFFFF", "101018" }
+
+local function toHex(c)
+    return string.format("%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5))
+end
+local function fromHex(s)
+    s = tostring(s or ""):gsub("[^%x]", "")
+    if #s == 3 then s = s:sub(1, 1):rep(2) .. s:sub(2, 2):rep(2) .. s:sub(3, 3):rep(2) end
+    if #s ~= 6 then return nil end
+    return Color3.fromRGB(tonumber(s:sub(1, 2), 16), tonumber(s:sub(3, 4), 16), tonumber(s:sub(5, 6), 16))
+end
+-- приймає Color3, "#RRGGBB" / "RGB", або { r, g, b } (0-255)
+local function parseColor(v)
+    if typeof(v) == "Color3" then return v end
+    if type(v) == "string" then return fromHex(v) end
+    if type(v) == "table" and tonumber(v[1]) and tonumber(v[2]) and tonumber(v[3]) then
+        return Color3.fromRGB(v[1], v[2], v[3])
+    end
+    return nil
+end
+
+-- не додаємо звук кліку до «зон перетягування»
+local function hitButton(parent, props)
+    local b = Instance.new("TextButton")
+    b.Text = ""; b.AutoButtonColor = false; b.BackgroundTransparency = 1; b.BorderSizePixel = 0
+    for k, v in pairs(props) do b[k] = v end
+    b:SetAttribute("SXNT_ClickAttached", true)
+    b.Parent = parent
+    return b
+end
+
+-- ── модель кольору: HSV + альфа, слухачі, прапори, rainbow ──
+local function newColorModel(win, opts)
+    local m = { listeners = {}, a = 1, rainbow = false, live = opts.live ~= false, hasAlpha = opts.alpha == true }
+    local c0 = parseColor(opts.default) or Color3.fromRGB(255, 70, 90)
+    m.h, m.s, m.v = c0:ToHSV()
+    if tonumber(opts.alphaDefault) then m.a = math.clamp(opts.alphaDefault, 0, 1) end
+    function m.color() return Color3.fromHSV(m.h, m.s, m.v) end
+
+    local function notify(final, src)
+        for _, fn in ipairs(m.listeners) do fn(src) end
+        if opts.flag then
+            Library:_commit(opts.flag, m.color())
+            if m.hasAlpha then Library:_commit(opts.flag .. "_alpha", m.a) end
+        end
+        if opts.callback and (m.live or final) then safe(opts.callback, m.color(), m.a) end
+    end
+    function m.setHSV(h, s, v, final, src)
+        m.h, m.s, m.v = math.clamp(h, 0, 1), math.clamp(s, 0, 1), math.clamp(v, 0, 1)
+        notify(final, src)
+    end
+    function m.setColor(c, final, src)
+        local h, s, v = c:ToHSV()
+        if s > 0.001 and v > 0.001 then m.h = h end     -- у сірого/чорного відтінок не визначений: лишаємо попередній
+        m.s, m.v = s, v
+        notify(final ~= false, src)
+    end
+    function m.setAlpha(a, final, src)
+        m.a = math.clamp(a, 0, 1)
+        notify(final, src)
+    end
+    function m.finish() notify(true, "finish") end   -- кінець перетягування: для live = false викликає callback
+
+    local rbConn
+    function m.setRainbow(on)
+        on = on and true or false
+        if on == m.rainbow then return end
+        m.rainbow = on
+        if rbConn then rbConn:Disconnect(); rbConn = nil end
+        if on then
+            m.s, m.v = math.max(m.s, 0.7), math.max(m.v, 0.85)
+            local acc = 0
+            rbConn = RunService.Heartbeat:Connect(function(dt)
+                if win._destroyed then m.setRainbow(false); return end
+                m.h = (m.h + dt * 0.12) % 1
+                acc += dt
+                if acc >= 0.04 then acc = 0; notify(true, "rainbow") end   -- ~25 оновлень/с достатньо
+            end)
+        end
+        if opts.flag then Library:_commit(opts.flag .. "_rainbow", on) end
+        notify(true, "rainbow")
+    end
+    return m
+end
+
+-- публічний API (спільний для картки й чипа)
+local function colorApi(m, opts, extra)
+    local api = {}
+    function api.Get() return m.color() end
+    function api.GetAlpha() return m.a end
+    function api.GetHex() return "#" .. toHex(m.color()) end
+    function api.GetHSV() return m.h, m.s, m.v end
+    function api.Set(_, c, a)
+        c = parseColor(c)
+        if not c then return end
+        if a ~= nil then m.a = math.clamp(a, 0, 1) end
+        m.setColor(c, true, "api")
+    end
+    function api.SetAlpha(_, a) m.setAlpha(a, true, "api") end
+    function api.SetRainbow(_, on) m.setRainbow(on) end
+    function api.IsRainbow() return m.rainbow end
+    if extra then for k, v in pairs(extra) do api[k] = v end end
+    return api
+end
+
+local function registerColorFlags(m, opts)
+    local flag = opts.flag
+    if not flag then return end
+    Library:RegisterFlag(flag, function() return m.color() end, function(v)
+        local c = parseColor(v)
+        if c then m.setColor(c, true, "flag") end
+    end, m.color())
+    if m.hasAlpha then
+        Library:RegisterFlag(flag .. "_alpha", function() return m.a end, function(v)
+            if tonumber(v) then m.setAlpha(tonumber(v), true, "flag") end
+        end, m.a)
+    end
+    if opts.rainbow then
+        Library:RegisterFlag(flag .. "_rainbow", function() return m.rainbow end, function(v) m.setRainbow(v == true) end, false)
+    end
+end
+
+function ColorUI.panelHeight(m, o)
+    local y = m.hasAlpha and 152 or 132
+    return (o.presets == false) and (y + 26) or (y + 52)
+end
+
+-- панель вибору кольору (SV-квадрат, відтінок, прозорість, HEX, rainbow, пресети)
+function ColorUI.buildPanel(win, parent, m, o)
+    o = o or {}
+    local mark = o.mark or function() end
+    local H = ColorUI.panelHeight(m, o)
+    local body = new("Frame", { Name = "ColorPanel", Size = UDim2.new(1, 0, 0, H), BackgroundTransparency = 1 }, parent)
+
+    -- насиченість / яскравість
+    local sv = new("Frame", { Size = UDim2.new(1, 0, 0, 104), BackgroundColor3 = Color3.fromHSV(m.h, 1, 1), BorderSizePixel = 0 }, body)
+    corner(sv, 8)
+    local white = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, sv)
+    corner(white, 8)
+    new("UIGradient", { Transparency = NumberSequence.new(0, 1) }, white)
+    local black = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = BLACK, BorderSizePixel = 0 }, sv)
+    corner(black, 8)
+    new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new(1, 0) }, black)
+    local svStroke = stroke(sv, Theme.border, 1)
+    local svCursor = new("Frame", {
+        Size = UDim2.fromOffset(14, 14), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(m.s, 0, 1 - m.v, 0),
+        BackgroundColor3 = m.color(), BorderSizePixel = 0, ZIndex = 5,
+    }, sv)
+    corner(svCursor, 999); stroke(svCursor, WHITE, 2)
+    local svHit = hitButton(sv, { Size = UDim2.fromScale(1, 1), ZIndex = 6 })
+
+    -- відтінок
+    local hue = new("Frame", { Position = UDim2.fromOffset(0, 112), Size = UDim2.new(1, 0, 0, 12), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, body)
+    corner(hue, 6)
+    local stops = {}
+    for i = 0, 6 do stops[#stops + 1] = ColorSequenceKeypoint.new(i / 6, Color3.fromHSV(i == 6 and 0 or i / 6, 1, 1)) end
+    new("UIGradient", { Color = ColorSequence.new(stops) }, hue)
+    local hueCursor = new("Frame", {
+        Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(m.h, 0, 0.5, 0),
+        BackgroundColor3 = Color3.fromHSV(m.h, 1, 1), BorderSizePixel = 0, ZIndex = 5,
+    }, hue)
+    corner(hueCursor, 999); stroke(hueCursor, WHITE, 2)
+    local hueHit = hitButton(hue, { Size = UDim2.fromScale(1, 1), ZIndex = 6 })
+
+    -- прозорість (необов'язково)
+    local alphaBar, alphaFill, alphaCursor, alphaHit
+    local nextY = 132
+    if m.hasAlpha then
+        alphaBar = new("Frame", { Position = UDim2.fromOffset(0, 132), Size = UDim2.new(1, 0, 0, 12), BackgroundColor3 = Theme.track, BorderSizePixel = 0 }, body)
+        corner(alphaBar, 6)
+        alphaFill = new("Frame", { Size = UDim2.fromScale(1, 1), BackgroundColor3 = m.color(), BorderSizePixel = 0 }, alphaBar)
+        corner(alphaFill, 6)
+        new("UIGradient", { Transparency = NumberSequence.new(1, 0) }, alphaFill)
+        alphaCursor = new("Frame", {
+            Size = UDim2.fromOffset(16, 16), AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(m.a, 0, 0.5, 0),
+            BackgroundColor3 = WHITE, BorderSizePixel = 0, ZIndex = 5,
+        }, alphaBar)
+        corner(alphaCursor, 999); stroke(alphaCursor, WHITE, 2)
+        alphaHit = hitButton(alphaBar, { Size = UDim2.fromScale(1, 1), ZIndex = 6 })
+        nextY = 152
+    end
+
+    -- рядок: превʼю, HEX, rainbow
+    local row = new("Frame", { Position = UDim2.fromOffset(0, nextY), Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1 }, body)
+    local preview = new("Frame", { Size = UDim2.fromOffset(26, 26), BackgroundColor3 = m.color(), BorderSizePixel = 0 }, row)
+    corner(preview, 7)
+    local prevStroke = stroke(preview, Theme.border, 1)
+    local hexWrap = new("Frame", { Position = UDim2.fromOffset(32, 0), Size = UDim2.fromOffset(86, 26), BackgroundColor3 = Theme.card2, BorderSizePixel = 0 }, row)
+    corner(hexWrap, 7)
+    local hexStroke = stroke(hexWrap, Theme.border, 1)
+    local hex = new("TextBox", {
+        Text = "", PlaceholderText = "#RRGGBB", _font = "b", TextSize = 12, TextColor3 = Theme.text,
+        PlaceholderColor3 = Theme.muted, ClearTextOnFocus = false, BackgroundTransparency = 1, BorderSizePixel = 0,
+        Size = UDim2.new(1, -12, 1, 0), Position = UDim2.fromOffset(6, 0), TextXAlignment = CENTER,
+    }, hexWrap)
+
+    local rainbowSw, rainbowLbl
+    if o.rainbow then
+        local rb = hitButton(row, { Size = UDim2.fromOffset(104, 26), AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, 0, 0, 0), ZIndex = 3 })
+        rainbowLbl = label(rb, T("rainbow"), 11, Theme.muted, { Size = UDim2.new(1, -44, 1, 0), TextXAlignment = RIGHT })
+        rainbowSw = makeSwitch(rb, true, m.rainbow)
+        rainbowSw.track.Position = UDim2.new(1, 0, 0.5, 0)
+        rb.MouseButton1Click:Connect(function() mark(); m.setRainbow(not m.rainbow) end)
+        win._onTheme(function() rainbowLbl.TextColor3 = Theme.muted end)
+        table.insert(win._textElements, { type = "custom", update = function() rainbowLbl.Text = T("rainbow") end })
+    end
+
+    -- пресети
+    local presetStrokes = {}
+    if o.presets ~= false then
+        local list = type(o.presets) == "table" and o.presets or PRESET_COLORS
+        local prow = new("Frame", { Position = UDim2.fromOffset(0, nextY + 34), Size = UDim2.new(1, 0, 0, 18), BackgroundTransparency = 1 }, body)
+        new("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6),
+            SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center,
+        }, prow)
+        for i, v in ipairs(list) do
+            local c = parseColor(v)
+            if c then
+                local b = hitButton(prow, { Size = UDim2.fromOffset(18, 18), BackgroundTransparency = 0, BackgroundColor3 = c, LayoutOrder = i })
+                corner(b, 999)
+                presetStrokes[#presetStrokes + 1] = stroke(b, Theme.border, 1)
+                b.MouseButton1Click:Connect(function() mark(); if m.rainbow then m.setRainbow(false) end; m.setColor(c, true, "preset") end)
+            end
+        end
+    end
+
+    -- візуальна синхронізація з моделлю
+    local function refresh(src, instant)
+        local c = m.color()
+        local set = instant and spSnap or sp
+        sv.BackgroundColor3 = Color3.fromHSV(m.h, 1, 1)
+        set(svCursor, "Position", UDim2.new(m.s, 0, 1 - m.v, 0), SPRING.snap)
+        svCursor.BackgroundColor3 = c
+        set(hueCursor, "Position", UDim2.new(m.h, 0, 0.5, 0), SPRING.snap)
+        hueCursor.BackgroundColor3 = Color3.fromHSV(m.h, 1, 1)
+        if alphaFill then
+            alphaFill.BackgroundColor3 = c
+            set(alphaCursor, "Position", UDim2.new(m.a, 0, 0.5, 0), SPRING.snap)
+        end
+        preview.BackgroundColor3 = c
+        if src ~= "hex" and not hex:IsFocused() then hex.Text = "#" .. toHex(c) end
+        if rainbowSw then rainbowSw.value = m.rainbow; rainbowSw.render(not instant) end
+    end
+    m.listeners[#m.listeners + 1] = refresh
+    body.Destroying:Connect(function()
+        local i = table.find(m.listeners, refresh)
+        if i then table.remove(m.listeners, i) end
+    end)
+    refresh(nil, true)
+
+    -- перетягування: глобальний слухач вікна викликає setPos з екранними координатами
+    local function startDrag(hit, setPos)
+        hit.InputBegan:Connect(function(inp)
+            if not isPress(inp) then return end
+            mark()
+            local sf = hit:FindFirstAncestorWhichIsA("ScrollingFrame")
+            if sf then sf.ScrollingEnabled = false end
+            win._sliderDragState = {
+                track = hit, scrollFrame = sf, setPos = setPos, setValue = function() end,
+                onEnd = function() m.finish() end,
+            }
+            setPos(inputScreenPos(inp))
+        end)
+    end
+    startDrag(svHit, function(p)
+        local a, sz = svHit.AbsolutePosition, svHit.AbsoluteSize
+        if sz.X <= 0 or sz.Y <= 0 then return end
+        m.setHSV(m.h, (p.X - a.X) / sz.X, 1 - (p.Y - a.Y) / sz.Y, false, "sv")
+    end)
+    startDrag(hueHit, function(p)
+        local a, sz = hueHit.AbsolutePosition, hueHit.AbsoluteSize
+        if sz.X <= 0 then return end
+        if m.rainbow then m.setRainbow(false) end
+        m.setHSV(math.clamp((p.X - a.X) / sz.X, 0, 0.999), m.s, m.v, false, "hue")
+    end)
+    if alphaHit then
+        startDrag(alphaHit, function(p)
+            local a, sz = alphaHit.AbsolutePosition, alphaHit.AbsoluteSize
+            if sz.X <= 0 then return end
+            m.setAlpha((p.X - a.X) / sz.X, false, "alpha")
+        end)
+    end
+
+    hex.InputBegan:Connect(function(i) if isPress(i) then mark() end end)
+    hex.Focused:Connect(function() mark(); tw(hexStroke, 0.2, { Color = Theme.accent }) end)
+    hex.FocusLost:Connect(function()
+        tw(hexStroke, 0.2, { Color = Theme.border })
+        local c = fromHex(hex.Text)
+        if c then m.setColor(c, true, "hex") else refresh() end
+    end)
+
+    win._onTheme(function()
+        tw(svStroke, 0.3, { Color = Theme.border }); tw(prevStroke, 0.3, { Color = Theme.border })
+        tw(hexWrap, 0.3, { BackgroundColor3 = Theme.card2 }); tw(hexStroke, 0.3, { Color = Theme.border })
+        hex.TextColor3 = Theme.text; hex.PlaceholderColor3 = Theme.muted
+        if alphaBar then tw(alphaBar, 0.3, { BackgroundColor3 = Theme.track }) end
+        for _, s in ipairs(presetStrokes) do tw(s, 0.3, { Color = Theme.border }) end
+    end)
+
+    return { frame = body, height = H, refresh = refresh }
+end
+
+-- ── маленький чип-вибірник у рядку (кружечок кольору → випадаюча панель) ──
+-- o: { default, flag, callback, alpha, rainbow, presets, live }
+function ColorUI.chip(win, container, order, o, H)
+    o = o or {}
+    local m = newColorModel(win, o)
+    local btn = new("TextButton", {
+        Text = "", Size = UDim2.fromOffset(30, H), BackgroundColor3 = m.color(), BorderSizePixel = 0,
+        AutoButtonColor = false, LayoutOrder = order,
+    }, container)
+    corner(btn, 6)
+    local btnStroke = stroke(btn, Theme.border, 1)
+    m.listeners[#m.listeners + 1] = function() btn.BackgroundColor3 = m.color() end
+    win._onTheme(function() tw(btnStroke, 0.3, { Color = Theme.border }) end)
+
+    local pop, popScale, panelObj
+    local isOpen = false
+    local function closePop()
+        if not isOpen then return end
+        isOpen = false
+        if win._popup and win._popup.card == pop then win._popup = nil end
+        if win._currentExpanded == closePop then win._currentExpanded = nil end
+        tw(pop, 0.2, { GroupTransparency = 1 })
+        sp(popScale, "Scale", win._scale() * 0.95, SPRING.smooth)
+        tw(btnStroke, 0.2, { Color = Theme.border })
+        task.delay(0.22, function() if not isOpen and pop then pop.Visible = false end end)
+    end
+    local function ensure()
+        if pop then return end
+        local ui = win.ScreenGui
+        local pad = 12
+        local ph = ColorUI.panelHeight(m, o)
+        pop = new("CanvasGroup", {
+            Name = "ColorPopover", Size = UDim2.fromOffset(232, ph + pad * 2), BackgroundColor3 = Theme.card,
+            BorderSizePixel = 0, ZIndex = 600, GroupTransparency = 1, Visible = false,
+        }, ui)
+        corner(pop, 12)
+        local popStroke = stroke(pop, Theme.accent, 1, 0.35)
+        popScale = new("UIScale", { Scale = win._scale() }, pop)
+        local inner = new("Frame", {
+            Position = UDim2.fromOffset(pad, pad), Size = UDim2.new(1, -pad * 2, 1, -pad * 2), BackgroundTransparency = 1,
+        }, pop)
+        local po = { presets = o.presets, rainbow = o.rainbow }
+        po.mark = function() if win._popup and win._popup.card == pop then win._popup.insideAt = os.clock() end end
+        panelObj = ColorUI.buildPanel(win, inner, m, po)
+        win._onTheme(function()
+            tw(pop, 0.3, { BackgroundColor3 = Theme.card }); tw(popStroke, 0.3, { Color = Theme.accent })
+        end)
+        win.Main:GetPropertyChangedSignal("Position"):Connect(function() if isOpen then closePop() end end)
+    end
+    local function openPop()
+        if win._popup then pcall(win._popup.collapse) end
+        if win._currentExpanded then pcall(win._currentExpanded) end
+        ensure()
+        local sc = win._scale()
+        local vp = viewport()
+        local w, h = 232 * sc, (ColorUI.panelHeight(m, o) + 24) * sc
+        local a, sz = btn.AbsolutePosition, btn.AbsoluteSize
+        local x = math.clamp(a.X + sz.X - w, 8, math.max(8, vp.X - w - 8))
+        local y = a.Y + sz.Y + 8
+        if y + h > vp.Y - 8 then y = a.Y - h - 8 end
+        y = math.clamp(y, 8, math.max(8, vp.Y - h - 8))
+        pop.Position = UDim2.fromOffset(x, y)
+        pop.Visible = true
+        spSnap(popScale, "Scale", sc * 0.95)
+        panelObj.refresh(nil, true)
+        isOpen = true
+        win._popup = { card = pop, collapse = closePop, insideAt = os.clock() }
+        win._currentExpanded = closePop
+        tw(pop, 0.25, { GroupTransparency = 0 })
+        sp(popScale, "Scale", sc, SPRING.pop)
+        tw(btnStroke, 0.2, { Color = Theme.accent })
+    end
+    btn.InputBegan:Connect(function(i) if isPress(i) and win._popup then win._popup.insideAt = os.clock() end end)
+    btn.MouseButton1Click:Connect(function() if isOpen then closePop() else openPop() end end)
+
+    registerColorFlags(m, o)
+    local api = colorApi(m, o, { Open = function() openPop() end, Close = function() closePop() end })
+    return { model = m, api = api, button = btn }
+end
+
+-- ── стандартна картка: назва + кружечок, клік розгортає панель ──
+-- opts: name, key, flag, default (Color3 / "#hex"), callback(color, alpha), alpha, rainbow, presets, live, expanded
+function SubTab:AddColorPicker(opts)
+    opts = opts or {}
+    local win = self._window
+    local m = newColorModel(win, opts)
+    local HEAD = 44
+    local pad = 12
+    local panelH = ColorUI.panelHeight(m, opts)
+    local expandedH = HEAD + 4 + panelH + 14
+
+    local frame, frameStroke = makeHost(self._container, HEAD, false, self._LO(), false)
+    frame.ClipsDescendants = true
+    local header = new("TextButton", {
+        Text = "", BackgroundTransparency = 1, AutoButtonColor = false, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, HEAD),
+    }, frame)
+    local lbl = label(header, opts.name or (opts.key and T(opts.key)) or opts.flag or "Color", 13, Theme.text, {
+        Position = UDim2.fromOffset(14, 0), Size = UDim2.new(1, -90, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    regText(win, lbl, opts.key)
+    local swatch = new("Frame", {
+        Size = UDim2.fromOffset(38, 22), AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -12, 0.5, 0),
+        BackgroundColor3 = m.color(), BorderSizePixel = 0,
+    }, header)
+    corner(swatch, 7)
+    local swStroke = stroke(swatch, Theme.border, 1)
+    m.listeners[#m.listeners + 1] = function() swatch.BackgroundColor3 = m.color() end
+
+    local holder = new("Frame", {
+        Position = UDim2.fromOffset(pad, HEAD + 4), Size = UDim2.new(1, -pad * 2, 0, panelH), BackgroundTransparency = 1, Visible = false,
+    }, frame)
+    local panel = ColorUI.buildPanel(win, holder, m, { presets = opts.presets, rainbow = opts.rainbow })
+
+    local expanded = false
+    local collapseFn
+    local function setExpanded(v, instant)
+        v = v and true or false
+        if v == expanded and not instant then return end
+        expanded = v
+        if expanded then
+            if win._currentExpanded and win._currentExpanded ~= collapseFn then pcall(win._currentExpanded) end
+            win._currentExpanded = collapseFn
+        elseif win._currentExpanded == collapseFn then
+            win._currentExpanded = nil
+        end
+        local target = UDim2.new(1, 0, 0, expanded and expandedH or HEAD)
+        if expanded then holder.Visible = true; panel.refresh(nil, true) end
+        if instant then spSnap(frame, "Size", target) else sp(frame, "Size", target, SPRING.smooth) end
+        tw(swStroke, 0.2, { Color = expanded and Theme.accent or Theme.border })
+        if not expanded then
+            task.delay(instant and 0 or 0.55, function() if not expanded then holder.Visible = false end end)
+        end
+    end
+    collapseFn = function() setExpanded(false) end
+    local st = { hover = false, down = false }
+    interact(header, st, function(a) styleHost(frame, frameStroke, false, st, a) end)
+    header.MouseButton1Click:Connect(function() setExpanded(not expanded) end)
+    win._onTheme(function()
+        lbl.TextColor3 = Theme.text
+        tw(swStroke, 0.3, { Color = expanded and Theme.accent or Theme.border })
+    end)
+    if opts.expanded then setExpanded(true, true) end
+
+    registerColorFlags(m, opts)
+    local api = colorApi(m, opts, {
+        Host = frame,
+        Expand = function() setExpanded(true) end,
+        Collapse = function() setExpanded(false) end,
+        IsExpanded = function() return expanded end,
+    })
+    registerSearch(self, frame, function() return lbl.Text end)
+    return api
 end
 
 -- Textbox: Enter / втрата фокусу = застосувати значення
@@ -3114,25 +4151,178 @@ end
 -- ═══════════════════════════════════════════════════════════
 --  v3: ВОДЯНИЙ ЗНАК, BLUR
 -- ═══════════════════════════════════════════════════════════
+
+-- ═══════════════════════════════════════════════════════════
+--  v4: HUD — водяний знак + список біндів (перетягувані, стикуються)
+-- ═══════════════════════════════════════════════════════════
+-- Стан HUD живе в Library._hud (позиції, видимість), тож переживає перестворення вікна і потрапляє в конфіг.
+local Hud = { Z = 400, WM_DEFAULT = Vector2.new(16, 16), KB_DEFAULT = Vector2.new(16, 56), GAP = 6 }
+
+function Hud.measure(text, size, bold)
+    local ok, v = pcall(function()
+        return TextService:GetTextSize(text, size, bold and FONT_BOLD or FONT, Vector2.new(1000, 100))
+    end)
+    return ok and v.X or (#text * size * 0.58)
+end
+function Hud.toPx(f, fallback)
+    if not f then return fallback end
+    local vp = viewport()
+    return Vector2.new(f.X * vp.X, f.Y * vp.Y)
+end
+function Hud.toFrac(p)
+    local vp = viewport()
+    return Vector2.new(p.X / math.max(vp.X, 1), p.Y / math.max(vp.Y, 1))
+end
+-- ping: елемент статистики кешується (раніше шукався заново кожні 0.5 с)
+function Hud.ping()
+    if Hud._pingItem == nil then
+        local ok, item = pcall(function() return game:GetService("Stats").Network.ServerStatsItem["Data Ping"] end)
+        Hud._pingItem = ok and item or false
+    end
+    if not Hud._pingItem then return nil end
+    local ok, v = pcall(function() return Hud._pingItem:GetValue() end)
+    return ok and math.floor(v + 0.5) or nil
+end
+-- плавне показ/ховання (CanvasGroup)
+function Hud.fade(frame, v)
+    local tok = (frame:GetAttribute("_ft") or 0) + 1
+    frame:SetAttribute("_ft", tok)
+    if v then
+        if not frame.Visible then frame.GroupTransparency = 1; frame.Visible = true end
+        tw(frame, 0.25, { GroupTransparency = 0 })
+    else
+        tw(frame, 0.2, { GroupTransparency = 1 })
+        task.delay(0.22, function()
+            if frame.Parent and frame:GetAttribute("_ft") == tok then frame.Visible = false end
+        end)
+    end
+end
+-- перетягування мишею/дотиком зі згладжуванням; клік без руху (< 4 px) нічого не робить
+function Hud.drag(frame, getPos, apply, clamp)
+    frame.InputBegan:Connect(function(input)
+        if not isPress(input) or Library._hud.draggable == false then return end
+        local startMouse = Vector2.new(input.Position.X, input.Position.Y)
+        local startPos = getPos()
+        local target, cur, moved = startPos, startPos, false
+        local moveConn, stepConn, endConn
+        local function finish()
+            if not moveConn then return end
+            moveConn:Disconnect(); stepConn:Disconnect(); endConn:Disconnect()
+            moveConn = nil
+            if moved then apply(clamp(target)) end
+        end
+        moveConn = UserInputService.InputChanged:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseMovement or (i.UserInputType == Enum.UserInputType.Touch and i == input) then
+                local d = Vector2.new(i.Position.X, i.Position.Y) - startMouse
+                if d.Magnitude > 4 then moved = true end
+                if moved then target = clamp(startPos + d) end
+            end
+        end)
+        stepConn = RunService.Heartbeat:Connect(function(dt)
+            if not moved then return end
+            cur = cur:Lerp(target, 1 - math.exp(-30 * dt))
+            apply(cur)
+        end)
+        endConn = input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then finish() end
+        end)
+    end)
+end
+
+-- реєструємо прапори HUD (щоб видимість/режими потрапляли в конфіги й керувались із Library:SetFlag)
+function Window:_initHud()
+    if self._hudInit then return end
+    self._hudInit = true
+    local win, hud = self, Library._hud
+    local function reg(name, get, set) Library:RegisterFlag(name, get, set, get()) end
+    reg("sxnt_wm_visible", function() return hud.wmVisible == true end, function(v) win:SetWatermark(v == true) end)
+    reg("sxnt_kb_visible", function() return hud.kbVisible == true end, function(v) win:SetKeybindList(v == true) end)
+    reg("sxnt_kb_active_only", function() return hud.kbOnlyActive == true end, function(v) win:SetKeybindOnlyActive(v == true) end)
+    reg("sxnt_kb_docked", function() return hud.kbDocked ~= false end, function(v) win:SetKeybindDocked(v == true) end)
+    local cam = Workspace.CurrentCamera
+    if cam then
+        self._track(cam:GetPropertyChangedSignal("ViewportSize"):Connect(function() win:_hudLayout(true) end))
+    end
+end
+
+-- позиції: коли список «пристиковано», він стоїть під водяним знаком і рухається разом із ним
+function Window:_hudPositions()
+    local hud = Library._hud
+    local wmPx = Hud.toPx(hud.wmF, Hud.WM_DEFAULT)
+    local kbPx
+    if hud.kbDocked ~= false then
+        local off = 0
+        local wm = self._watermark
+        if wm and hud.wmVisible then
+            local h = wm.Frame.AbsoluteSize.Y
+            off = (h > 0 and h or 28) + Hud.GAP
+        end
+        kbPx = wmPx + Vector2.new(0, off)
+    else
+        kbPx = Hud.toPx(hud.kbF, Hud.KB_DEFAULT)
+    end
+    return wmPx, kbPx
+end
+function Window:_hudLayout(instant)
+    local wmPx, kbPx = self:_hudPositions()
+    local wm, kb = self._watermark, self._kb
+    if wm and wm.Frame.Parent then
+        local f = wm.Frame
+        local sz = f.AbsoluteSize
+        local vp = viewport()
+        local p = Vector2.new(math.clamp(wmPx.X, 0, math.max(0, vp.X - sz.X)), math.clamp(wmPx.Y, 0, math.max(0, vp.Y - sz.Y)))
+        spSnap(f, "Position", UDim2.fromOffset(p.X, p.Y))
+    end
+    if kb and kb.Frame.Parent then
+        local f = kb.Frame
+        local sz = f.AbsoluteSize
+        local vp = viewport()
+        local p = Vector2.new(math.clamp(kbPx.X, 0, math.max(0, vp.X - sz.X)), math.clamp(kbPx.Y, 0, math.max(0, vp.Y - sz.Y)))
+        local target = UDim2.fromOffset(p.X, p.Y)
+        if instant then spSnap(f, "Position", target) else sp(f, "Position", target, SPRING.soft) end
+    end
+end
+-- об'єднує десятки змін за кадр в одне оновлення
+function Window:_hudRefresh()
+    if self._hudDirty or self._destroyed then return end
+    self._hudDirty = true
+    task.defer(function()
+        self._hudDirty = false
+        if self._kb and not self._destroyed then self._kb.Refresh() end
+    end)
+end
+
+-- ── Водяний знак ──
+-- opts: text, showFps, showPing, visible, position (Vector2/UDim2, лише якщо ще не збережено), draggable
 function Window:AddWatermark(opts)
     opts = opts or {}
+    local win = self
     local ui = self.ScreenGui
     if not ui or not ui.Parent then return end
-    if self._watermark then pcall(function() self._watermark.Frame:Destroy() end) end
+    self:_initHud()
+    local hud = Library._hud
+    if self._watermark then pcall(function() self._watermark.Destroy() end) end
     local brand = tostring(opts.text or "SXNT")
     local showFps, showPing = opts.showFps ~= false, opts.showPing ~= false
+    if hud.wmVisible == nil then hud.wmVisible = opts.visible ~= false end
+    if opts.draggable ~= nil and hud.draggable == nil then hud.draggable = opts.draggable ~= false end
+    if opts.position and not hud.wmF then
+        local p = opts.position
+        if typeof(p) == "UDim2" then p = Vector2.new(p.X.Offset, p.Y.Offset) end
+        if typeof(p) == "Vector2" then hud.wmF = Hud.toFrac(p) end
+    end
 
-    local frame = new("Frame", {
+    local frame = new("CanvasGroup", {
         Name = "Watermark", Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(0, 28),
         AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = Theme.bg, BackgroundTransparency = 0.12,
-        BorderSizePixel = 0, ZIndex = 400, Visible = opts.visible ~= false,
+        BorderSizePixel = 0, ZIndex = Hud.Z, Visible = hud.wmVisible, GroupTransparency = hud.wmVisible and 0 or 1, Active = true,
     }, ui)
     corner(frame, 10)
     local st = stroke(frame, WHITE, 1.2, 0.25)
     local sg = gradient(st, Theme.accent, Theme.accent2, 0)
     new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, frame)
     local lbl = label(frame, "", 12, Theme.text, {
-        _font = "b", Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, ZIndex = 401, RichText = true,
+        _font = "b", Size = UDim2.fromOffset(0, 28), AutomaticSize = Enum.AutomaticSize.X, RichText = true,
     })
     local fps, ping = 0, nil
     local function refresh()
@@ -3142,36 +4332,279 @@ function Window:AddWatermark(opts)
         if showPing and ping then txt ..= string.format('  <font color="#%s">|</font>  %d ms', m, ping) end
         lbl.Text = txt
     end
-    local acc, frames = 0, 0
-    self._track(RunService.Heartbeat:Connect(function(dt)
-        acc += dt; frames += 1
-        if acc >= 0.5 then
-            fps = math.floor(frames / acc + 0.5); frames = 0; acc = 0
-            local ok, v = pcall(function()
-                return math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue() + 0.5)
-            end)
-            ping = ok and v or nil
-            if frame.Visible then refresh() end
-        end
-    end))
+
+    -- лічильник FPS працює лише поки знак видимий
+    local statConn
+    local function startStats()
+        if statConn or not (showFps or showPing) then return end
+        local acc, frames = 0, 0
+        statConn = RunService.Heartbeat:Connect(function(dt)
+            acc += dt; frames += 1
+            if acc >= 0.5 then
+                fps = math.floor(frames / acc + 0.5); frames = 0; acc = 0
+                if showPing then ping = Hud.ping() end
+                refresh()
+            end
+        end)
+    end
+    local function stopStats()
+        if statConn then statConn:Disconnect(); statConn = nil end
+    end
+    if hud.wmVisible then startStats() end
     refresh()
-    self._onTheme(function()
+    win:_hudLayout(true)
+    lbl:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() win:_hudLayout(true) end)
+
+    -- перетягування (разом зі списком біндів, якщо він пристикований)
+    local function groupSize()
+        local sz = frame.AbsoluteSize
+        local w, h = sz.X, sz.Y
+        if hud.kbDocked ~= false and win._kb and hud.kbVisible then
+            local ks = win._kb.Frame.AbsoluteSize
+            w = math.max(w, ks.X); h = h + Hud.GAP + ks.Y
+        end
+        return w, h
+    end
+    Hud.drag(frame, function() return Hud.toPx(hud.wmF, Hud.WM_DEFAULT) end, function(p)
+        hud.wmF = Hud.toFrac(p); win:_hudLayout(true)
+    end, function(p)
+        local vp = viewport()
+        local w, h = groupSize()
+        return Vector2.new(math.clamp(p.X, 0, math.max(0, vp.X - w)), math.clamp(p.Y, 0, math.max(0, vp.Y - h)))
+    end)
+
+    win._onTheme(function()
         setGrad(sg, Theme.accent, Theme.accent2); tw(frame, 0.3, { BackgroundColor3 = Theme.bg }); refresh()
     end)
+    table.insert(win._fontHooks, function() task.defer(function() refresh(); win:_hudLayout(true) end) end)
+
     local api = { Frame = frame }
-    function api.SetVisible(_, v) frame.Visible = v and true or false; if v then refresh() end end
+    function api.SetVisible(_, v)
+        v = v and true or false
+        hud.wmVisible = v
+        Hud.fade(frame, v)
+        if v then startStats(); refresh() else stopStats() end
+        win:_hudLayout(false)
+        Library:_commit("sxnt_wm_visible", v)
+    end
+    function api.Destroy()
+        stopStats()
+        if frame.Parent then frame:Destroy() end
+        if win._watermark == api then win._watermark = nil end
+    end
+    frame.Destroying:Connect(stopStats)
     self._watermark = api
     return api
 end
 function Window:SetWatermark(v, opts)
+    v = v and true or false
     if v then
         if self._watermark and self._watermark.Frame.Parent then self._watermark:SetVisible(true)
-        else self:AddWatermark(opts) end
-    elseif self._watermark then
-        self._watermark:SetVisible(false)
+        else Library._hud.wmVisible = true; self:AddWatermark(opts); Library:_commit("sxnt_wm_visible", true) end
+    else
+        if self._watermark and self._watermark.Frame.Parent then self._watermark:SetVisible(false)
+        else Library._hud.wmVisible = false; Library:_commit("sxnt_wm_visible", false) end
     end
 end
-function Window:IsWatermarkVisible() return self._watermark ~= nil and self._watermark.Frame.Visible end
+function Window:IsWatermarkVisible() return Library._hud.wmVisible == true and self._watermark ~= nil end
+
+-- ── Список біндів ──
+-- opts: visible, title, onlyActive (показувати лише ввімкнені), docked (стик під водяним знаком)
+function Window:AddKeybindList(opts)
+    opts = opts or {}
+    local win = self
+    local ui = self.ScreenGui
+    if not ui or not ui.Parent then return end
+    self:_initHud()
+    self:_initBinds()
+    local hud = Library._hud
+    if self._kb then pcall(function() self._kb.Destroy() end) end
+    if hud.kbVisible == nil then hud.kbVisible = opts.visible ~= false end
+    if hud.kbOnlyActive == nil then hud.kbOnlyActive = opts.onlyActive == true end
+    if hud.kbDocked == nil then hud.kbDocked = opts.docked ~= false end
+
+    local frame = new("CanvasGroup", {
+        Name = "KeybindList", Size = UDim2.fromOffset(150, 0), AutomaticSize = Enum.AutomaticSize.Y,
+        BackgroundColor3 = Theme.bg, BackgroundTransparency = 0.12, BorderSizePixel = 0, ZIndex = Hud.Z,
+        Visible = false, GroupTransparency = 1, Active = true,
+    }, ui)
+    corner(frame, 10)
+    local st = stroke(frame, WHITE, 1.2, 0.25)
+    local sg = gradient(st, Theme.accent, Theme.accent2, 0)
+    new("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder }, frame)
+    new("UIPadding", { PaddingBottom = UDim.new(0, 5) }, frame)
+    local header = new("Frame", { Size = UDim2.new(1, 0, 0, 26), BackgroundTransparency = 1, LayoutOrder = 0 }, frame)
+    local titleKey = opts.title == nil
+    local title = label(header, opts.title or T("hud_keybinds"), 11, Theme.accent, {
+        _font = "b", Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -20, 1, 0),
+    })
+    local line = new("Frame", { Position = UDim2.new(0, 8, 1, -1), Size = UDim2.new(1, -16, 0, 1), BackgroundColor3 = WHITE, BorderSizePixel = 0 }, header)
+    local lineGrad = gradient(line, Theme.accent, Theme.accent2, 0)
+    new("UIGradient", { Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1),
+    }) }, line)
+
+    local ROW_H = 20
+    local rows = {}
+    local shownNow = false
+
+    local function styleRow(r, active, animate)
+        local d = animate and 0.2 or 0
+        tw(r.dot, d, { BackgroundColor3 = active and Theme.accent or Theme.muted, BackgroundTransparency = active and 0 or 0.45 })
+        tw(r.name, d, { TextColor3 = active and Theme.text or Theme.muted })
+        tw(r.key, d, { TextColor3 = active and Theme.accent or Theme.muted })
+        r.active = active
+    end
+    local function makeRow(b)
+        local row = new("Frame", {
+            Size = UDim2.new(1, 0, 0, 0), BackgroundTransparency = 1, ClipsDescendants = true, BorderSizePixel = 0,
+        }, frame)
+        local dot = new("Frame", {
+            Size = UDim2.fromOffset(6, 6), AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 11, 0.5, 0),
+            BackgroundColor3 = Theme.muted, BorderSizePixel = 0,
+        }, row)
+        corner(dot, 999)
+        local name = label(row, "", 12, Theme.muted, { Position = UDim2.fromOffset(25, 0), Size = UDim2.new(1, -60, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd })
+        local key = label(row, "", 11, Theme.muted, {
+            _font = "b", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -10, 0, 0), Size = UDim2.fromOffset(40, ROW_H),
+            TextXAlignment = RIGHT,
+        })
+        local r = { frame = row, dot = dot, name = name, key = key, active = false }
+        sp(row, "Size", UDim2.new(1, 0, 0, ROW_H), SPRING.soft)
+        return r
+    end
+    local function removeRow(b, r)
+        rows[b] = nil
+        sp(r.frame, "Size", UDim2.new(1, 0, 0, 0), SPRING.smooth)
+        tw(r.name, 0.18, { TextTransparency = 1 }); tw(r.key, 0.18, { TextTransparency = 1 }); tw(r.dot, 0.18, { BackgroundTransparency = 1 })
+        task.delay(0.35, function() if r.frame.Parent then r.frame:Destroy() end end)
+    end
+
+    local curW
+    local function refresh()
+        if not frame.Parent then return end
+        local now = os.clock()
+        local want, count = {}, 0
+        for i, b in ipairs(win._binds or {}) do
+            if b.list and b.n > 0 and b.enabled then
+                local active
+                if b.mode == "press" then active = (now - b.flash) < 0.35 else active = b.active end
+                if not hud.kbOnlyActive or active then want[b] = { order = i, active = active }; count += 1 end
+            end
+        end
+        for b, r in pairs(table.clone(rows)) do
+            if not want[b] then removeRow(b, r) end
+        end
+        local w = math.max(150, Hud.measure(title.Text, 11, true) + 24)
+        for b, info in pairs(want) do
+            local r = rows[b]
+            local fresh = r == nil
+            if fresh then r = makeRow(b); rows[b] = r end
+            local keyTxt = comboText(b.keys) or ""
+            local keyW = Hud.measure(keyTxt, 11, true)
+            r.name.Text = b.name
+            r.key.Text = keyTxt
+            r.key.Size = UDim2.fromOffset(keyW + 2, ROW_H)
+            r.name.Size = UDim2.new(1, -(25 + keyW + 22), 1, 0)
+            r.frame.LayoutOrder = info.order
+            if fresh then styleRow(r, info.active, false) elseif r.active ~= info.active then styleRow(r, info.active, true) end
+            w = math.max(w, 25 + Hud.measure(b.name, 12, false) + 18 + keyW + 12)
+        end
+        if curW ~= w then
+            if curW == nil or not shownNow then spSnap(frame, "Size", UDim2.fromOffset(w, 0)) else sp(frame, "Size", UDim2.fromOffset(w, 0), SPRING.soft) end
+            curW = w
+        end
+        local show = hud.kbVisible == true and count > 0
+        if show ~= shownNow then
+            shownNow = show
+            Hud.fade(frame, show)
+            win:_hudLayout(true)
+        end
+    end
+    local function clampPx(p, w, h)
+        local vp = viewport()
+        return Vector2.new(math.clamp(p.X, 0, math.max(0, vp.X - w)), math.clamp(p.Y, 0, math.max(0, vp.Y - h)))
+    end
+    -- перетягування: якщо пристиковано — рухає всю групу (водяний знак + список), інакше лише список
+    Hud.drag(frame, function() local _, kbPx = win:_hudPositions(); return kbPx end, function(p)
+        if hud.kbDocked ~= false then
+            local wmPx, kbPx = win:_hudPositions()
+            hud.wmF = Hud.toFrac(p - (kbPx - wmPx))
+        else
+            hud.kbF = Hud.toFrac(p)
+        end
+        win:_hudLayout(true)
+    end, function(p)
+        local sz = frame.AbsoluteSize
+        if hud.kbDocked ~= false then
+            local wmPx, kbPx = win:_hudPositions()
+            local off = kbPx - wmPx
+            local wmW = (win._watermark and hud.wmVisible) and win._watermark.Frame.AbsoluteSize.X or 0
+            return clampPx(p - off, math.max(sz.X, wmW), sz.Y + off.Y) + off
+        end
+        return clampPx(p, sz.X, sz.Y)
+    end)
+
+    win._onTheme(function()
+        setGrad(sg, Theme.accent, Theme.accent2); setGrad(lineGrad, Theme.accent, Theme.accent2)
+        tw(frame, 0.3, { BackgroundColor3 = Theme.bg }); title.TextColor3 = Theme.accent
+        for _, r in pairs(rows) do styleRow(r, r.active, true) end
+    end)
+    table.insert(win._fontHooks, function() curW = nil; task.defer(refresh) end)
+    table.insert(win._textElements, { type = "custom", update = function()
+        if titleKey then title.Text = T("hud_keybinds") end
+        curW = nil; refresh()
+    end })
+
+    local api = { Frame = frame, Refresh = refresh }
+    function api.SetVisible(_, v)
+        hud.kbVisible = v and true or false
+        refresh(); Library:_commit("sxnt_kb_visible", hud.kbVisible)
+    end
+    function api.Destroy()
+        if frame.Parent then frame:Destroy() end
+        if win._kb == api then win._kb = nil end
+    end
+    self._kb = api
+    refresh()
+    win:_hudLayout(true)
+    return api
+end
+function Window:SetKeybindList(v)
+    v = v and true or false
+    Library._hud.kbVisible = v
+    if self._kb then self._kb:SetVisible(v)
+    elseif v and self._binds and #self._binds > 0 then self:AddKeybindList({ visible = true })
+    else Library:_commit("sxnt_kb_visible", v) end
+end
+function Window:IsKeybindListVisible() return Library._hud.kbVisible == true end
+function Window:SetKeybindOnlyActive(v)
+    Library._hud.kbOnlyActive = v and true or false
+    Library:_commit("sxnt_kb_active_only", Library._hud.kbOnlyActive)
+    self:_hudRefresh()
+end
+function Window:SetKeybindDocked(v)
+    local hud = Library._hud
+    v = v and true or false
+    if v and hud.kbDocked == false then hud.kbF = nil end
+    if not v and hud.kbDocked ~= false and self._kb then   -- відстикувати: лишаємо список на місці
+        local _, kbPx = self:_hudPositions()
+        hud.kbF = Hud.toFrac(kbPx)
+    end
+    hud.kbDocked = v
+    Library:_commit("sxnt_kb_docked", v)
+    self:_hudLayout(false)
+end
+function Window:SetHudDraggable(v) Library._hud.draggable = v ~= false end
+function Window:IsHudDraggable() return Library._hud.draggable ~= false end
+-- повернути позиції за замовчуванням і пристикувати список
+function Window:ResetHud()
+    local hud = Library._hud
+    hud.wmF, hud.kbF = nil, nil
+    self:SetKeybindDocked(true)
+    self:_hudLayout(false)
+end
+
 function Window:SetBlur(v) if self._setBlur then self._setBlur(v) end end
 function Window:GetBlur() return self._getBlur and self._getBlur() or false end
 
@@ -3193,6 +4626,7 @@ local function ensureFolder()
     end
 end
 
+Library.ConfigSaveHud = true          -- зберігати позиції водяного знака / списку біндів
 Library.ConfigSaveAppearance = true   -- зберігати тему / шрифт / мову разом із прапорами
 function Library:ExportConfig()
     local out = {}
@@ -3203,8 +4637,15 @@ function Library:ExportConfig()
         if not Library.ConfigIgnore[name] then
             local v = Library:GetFlag(name)
             local t = typeof(v)
-            if t == "boolean" or t == "number" or t == "string" then out[name] = v end
+            if t == "boolean" or t == "number" or t == "string" then out[name] = v
+            elseif t == "Color3" then out[name] = "#" .. toHex(v) end   -- v4: кольори зберігаються як "#RRGGBB"
         end
+    end
+    if Library.ConfigSaveHud ~= false then
+        local h, hp = Library._hud, {}
+        if h.wmF then hp.wm = { h.wmF.X, h.wmF.Y } end
+        if h.kbF then hp.kb = { h.kbF.X, h.kbF.Y } end
+        if next(hp) then out.__hud = hp end
     end
     return out
 end
@@ -3220,6 +4661,20 @@ function Library:ImportConfig(tbl)
     end
     for name, v in pairs(tbl) do
         if Flags[name] and not Library.ConfigIgnore[name] then Library:SetFlag(name, v); n += 1 end
+    end
+    -- позиції HUD застосовуємо після прапорів (прапор «пристикувати» міг змінити їх)
+    if Library.ConfigSaveHud ~= false and type(tbl.__hud) == "table" then
+        local h = Library._hud
+        local function v2(a)
+            if type(a) == "table" and tonumber(a[1]) and tonumber(a[2]) then
+                return Vector2.new(math.clamp(a[1], 0, 1), math.clamp(a[2], 0, 1))
+            end
+        end
+        h.wmF = v2(tbl.__hud.wm) or h.wmF
+        h.kbF = v2(tbl.__hud.kb) or h.kbF
+        for _, w in ipairs(table.clone(Library._windows)) do
+            if w._hudLayout then pcall(function() w:_hudLayout(true) end) end
+        end
     end
     return n
 end
@@ -3274,6 +4729,210 @@ function Library:AutoLoad()
     local n = Library:GetAutoload()
     if n then return Library:LoadConfig(n) end
     return false, "no autoload"
+end
+
+
+-- ═══════════════════════════════════════════════════════════
+--  v4: СВІЙ АКЦЕНТ + ГОТОВА ВКЛАДКА НАЛАШТУВАНЬ
+-- ═══════════════════════════════════════════════════════════
+-- Кастомний акцент накладається поверх будь-якої теми (і переживає зміну теми, доки його не скинуто).
+local function repaintAllWindows()
+    for _, w in ipairs(table.clone(Library._windows)) do
+        if w and w._applyTheme then pcall(w._applyTheme) end
+    end
+end
+function Library:SetAccent(c1, c2)
+    c1 = parseColor(c1)
+    if not c1 then return false end
+    if c2 then c2 = parseColor(c2) end
+    if not c2 then
+        local h, s, v = c1:ToHSV()
+        c2 = Color3.fromHSV((h + 0.08) % 1, s, v)
+    end
+    accentOv = { c1, c2 }
+    applyThemeToMirror(currentThemeName)
+    repaintAllWindows()
+    Library:_commit("sxnt_accent", "#" .. toHex(c1))
+    return true
+end
+function Library:ClearAccent()
+    if not accentOv then return end
+    accentOv = nil
+    applyThemeToMirror(currentThemeName)
+    repaintAllWindows()
+    Library:_commit("sxnt_accent", "")
+end
+function Library:GetAccentOverride() return accentOv and accentOv[1] or nil end
+-- прапор, щоб акцент зберігався в конфігах: "#RRGGBB" або "" (немає перевизначення)
+Library:RegisterFlag("sxnt_accent",
+    function() return accentOv and ("#" .. toHex(accentOv[1])) or "" end,
+    function(v) if type(v) ~= "string" or v == "" then Library:ClearAccent() else Library:SetAccent(v) end end, "")
+
+-- Вимкнути/увімкнути всі бінди одним перемикачем (клавіша меню працює завжди)
+function Window:SetBindsEnabled(v)
+    self._bindsOn = v ~= false
+    Library:_commit("sxnt_binds_on", self._bindsOn)
+end
+function Window:AreBindsEnabled() return self._bindsOn ~= false end
+
+local ACCENT_PRESETS = { "0096FF", "7C5BFF", "A35BFF", "FF5BC8", "FF3B5C", "FF8A3B", "FFD23B", "4BE37B", "3BDDFF", "FFFFFF" }
+
+-- Window:AddSettingsTab{ icon, key, name, show = { appearance, hud, keys, config = false → без розділу }, configs }
+-- Повертає Tab; усі елементи — звичайні компоненти, тож працюють пошук, теми, переклади й конфіги.
+function Window:AddSettingsTab(opts)
+    opts = opts or {}
+    local win = self
+    local show = opts.show or {}
+    self:_initHud()
+    local tab = self:AddTab({ icon = opts.icon or "⚙", key = opts.key or "tab_settings", name = opts.name })
+
+    local function sub(key)
+        local s = tab:AddSubTab(T(key))
+        regText(win, s._pill, key)   -- назва пілюлі перекладається разом з усім інтерфейсом
+        return s
+    end
+    local function notify(kind, msg) win:Notify({ type = kind, title = T("tab_settings"), content = msg }) end
+
+    -- ── Вигляд ──
+    if show.appearance ~= false then
+        local s = sub("sub_appearance")
+        s:AddSection(T("sec_theme"), "sec_theme")
+        s:AddThemePicker()
+        s:AddFontPicker()
+
+        local resetting = false
+        local picker
+        picker = s:AddColorPicker({
+            key = "accent_color", default = Theme.accent, live = false, presets = ACCENT_PRESETS,
+            callback = function(c) if not resetting then Library:SetAccent(c) end end,
+        })
+        local function syncPicker(c)
+            resetting = true
+            picker:Set(c)
+            resetting = false
+        end
+        s:AddButton({ key = "accent_reset", callback = function()
+            Library:ClearAccent(); syncPicker(Theme.accent)
+        end })
+        Library:OnFlagChanged("sxnt_accent", function(v)
+            if type(v) == "string" and v ~= "" then syncPicker(v) else syncPicker(Theme.accent) end
+        end)
+        win._onTheme(function() if not accentOv then syncPicker(Theme.accent) end end)
+
+        s:AddSection(T("sec_interface"), "sec_interface")
+        local langs = { "ENG", "UA", "TR", "RUS" }
+        local extra = {}
+        for code in pairs(L) do if not table.find(langs, code) then extra[#extra + 1] = code end end
+        table.sort(extra)
+        for _, code in ipairs(extra) do langs[#langs + 1] = code end
+        s:AddDropdown({
+            key = "lang", options = langs, default = Library:GetLanguage(),
+            callback = function(v) if v ~= Library:GetLanguage() then Library:SetLanguage(v) end end,
+        })
+        s:AddToggle({ key = "blur", default = win:GetBlur(), flag = "sxnt_blur", callback = function(v) win:SetBlur(v) end })
+        if not IS_MOBILE then
+            s:AddToggle({ key = "hideicon", default = false, flag = "sxnt_hide_icon", callback = function(v) win._hideIcon(v) end })
+        end
+        s:AddSection(T("sec_sound"), "sec_sound")
+        s:AddSlider({
+            key = "volume", min = 0, max = 2, step = 0.1, default = win._GetVolume(), flag = "sxnt_volume",
+            callback = function(v) win._SetVolume(v) end,
+        })
+    end
+
+    -- ── HUD ──
+    if show.hud ~= false then
+        local s = sub("sub_hud")
+        local hud = Library._hud
+        s:AddSection(T("sec_hud"), "sec_hud")
+        local function hudToggle(key, flagName, get, set)
+            local _, api = s:AddToggle({ key = key, default = get(), callback = set })
+            Library:OnFlagChanged(flagName, function(v) api:Set(v == true) end)   -- синхронізація із зовнішніми змінами
+            return api
+        end
+        hudToggle("hud_watermark", "sxnt_wm_visible", function() return hud.wmVisible == true end, function(v) win:SetWatermark(v) end)
+        hudToggle("hud_keybinds_show", "sxnt_kb_visible", function() return hud.kbVisible == true end, function(v) win:SetKeybindList(v) end)
+        hudToggle("hud_only_active", "sxnt_kb_active_only", function() return hud.kbOnlyActive == true end, function(v) win:SetKeybindOnlyActive(v) end)
+        hudToggle("hud_docked", "sxnt_kb_docked", function() return hud.kbDocked ~= false end, function(v) win:SetKeybindDocked(v) end)
+        s:AddToggle({ key = "hud_draggable", default = win:IsHudDraggable(), flag = "sxnt_hud_draggable", callback = function(v) win:SetHudDraggable(v) end })
+        s:AddButton({ key = "hud_reset", callback = function() win:ResetHud() end })
+    end
+
+    -- ── Клавіші ──
+    if show.keys ~= false then
+        local s = sub("sub_keys")
+        s:AddSection(T("sec_binds"), "sec_binds")
+        if win._menuBind then
+            s:AddKeybind({ key = "keybind", flag = "sxnt_menu_key", bind = win._menuBind, required = true, showMode = false })
+        end
+        s:AddToggle({ key = "binds_master", default = win:AreBindsEnabled(), flag = "sxnt_binds_on", callback = function(v) win:SetBindsEnabled(v) end })
+        local hint = s:AddLabel(T("keys_hint"))
+        regText(win, hint, "keys_hint")
+    end
+
+    -- ── Конфіги ──
+    if show.config ~= false then
+        local s = sub("sub_config")
+        local fs = fsAvailable()
+        s:AddSection(T("sec_configs"), "sec_configs")
+        if not fs then regText(win, s:AddLabel(T("cfg_nofs")), "cfg_nofs") end
+        if fs then
+            local _, nameApi = s:AddTextbox({ key = "cfg_name", placeholder = "default", default = "default" })
+            local pickApi
+            local function refreshList()
+                local list = Library:ListConfigs()
+                if #list == 0 then list = { T("cfg_none") } end
+                pickApi:SetOptions(list, list[1])
+            end
+            pickApi = s:AddDropdown({
+                key = "cfg_pick", options = { T("cfg_none") }, default = T("cfg_none"),
+                callback = function(v) if v ~= T("cfg_none") then nameApi:Set(v) end end,
+            })
+            refreshList()
+            local function currentName()
+                local n = nameApi:Get()
+                if cfgName(n) == "" then notify("warning", T("cfg_empty")); return nil end
+                return n
+            end
+            s:AddButton({ key = "cfg_save", primary = true, callback = function()
+                local n = currentName(); if not n then return end
+                local ok, err = Library:SaveConfig(n)
+                notify(ok and "success" or "error", ok and T("cfg_saved") or (T("cfg_err") .. ": " .. tostring(err)))
+                if ok then refreshList() end
+            end })
+            s:AddButton({ key = "cfg_load", callback = function()
+                local n = currentName(); if not n then return end
+                local ok, res = Library:LoadConfig(n)
+                notify(ok and "success" or "error", ok and (T("cfg_loaded") .. " (" .. tostring(res) .. ")") or (T("cfg_err") .. ": " .. tostring(res)))
+            end })
+            s:AddButton({ key = "cfg_autoload", callback = function()
+                local n = currentName(); if not n then return end
+                if Library:SetAutoload(n) then notify("success", T("cfg_autoset")) else notify("error", T("cfg_err")) end
+            end })
+            s:AddButton({ key = "cfg_delete", callback = function()
+                local n = currentName(); if not n then return end
+                if Library:DeleteConfig(n) then notify("success", T("cfg_deleted")); refreshList() else notify("error", T("cfg_err")) end
+            end })
+        end
+        s:AddSection(T("sec_transfer"), "sec_transfer")
+        s:AddButton({ key = "cfg_export", callback = function()
+            local ok = Library.Copy(HttpService:JSONEncode(Library:ExportConfig()))
+            notify(ok and "success" or "error", ok and T("cfg_copied") or T("no_clipboard"))
+        end })
+        local importApi
+        local _importHost
+        _importHost, importApi = s:AddTextbox({ key = "cfg_import", placeholder = "{ ... }", callback = function(v)
+            if v == "" then return end
+            local ok, data = pcall(function() return HttpService:JSONDecode(v) end)
+            if ok and type(data) == "table" then
+                notify("success", T("cfg_imported") .. " (" .. Library:ImportConfig(data) .. ")")
+            else
+                notify("error", T("cfg_err"))
+            end
+            importApi:Set("")
+        end })
+    end
+    return tab
 end
 
 return Library
