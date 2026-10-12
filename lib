@@ -2513,7 +2513,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         Text = "", BackgroundTransparency = 1, AutoButtonColor = false, BorderSizePixel = 0,
         Size = UDim2.new(1, 0, 0, headH),
     }, frame)
-    local arrow = label(header, "▼", compact and 14 or 16, Theme.muted, {
+    local arrow = label(header, "▼", compact and 24 or 26, Theme.muted, {
         Size = UDim2.fromOffset(20, headH), Position = UDim2.fromOffset(sidePad, 0),
         TextXAlignment = CENTER, TextYAlignment = Enum.TextYAlignment.Center,
     })
