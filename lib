@@ -2931,6 +2931,7 @@ function SubTab:AddExpandableCard(opts)
     return cardObj
 end
 
+local addMiniKeybind   -- визначається нижче (потрібні KeyMgr і buildControls)
 local function addMiniSwitch(win, g, o)
     local host, api = buildToggle(win, g.holder, g:nextOrder(), o or {}, true)
     g:add(host, function() return 36 end)
@@ -2956,6 +2957,7 @@ local function addMiniExpandable(win, parentGroup, o)
     inner.AddMiniSlider = function(a, b) return addMiniSlider(win, c.group, pick(a, b)) end
     inner.AddMiniButton = function(a, b) return addMiniButton(win, c.group, pick(a, b)) end
     inner.AddMiniExpandable = function(a, b) return addMiniExpandable(win, c.group, pick(a, b)) end
+    inner.AddMiniKeybind = function(a, b) return addMiniKeybind(win, c.group, pick(a, b)) end
     return inner
 end
 
@@ -2963,6 +2965,7 @@ function ExpandableCard:AddMiniSwitch(opts) return addMiniSwitch(self._win, self
 function ExpandableCard:AddMiniSlider(opts) return addMiniSlider(self._win, self._group, opts) end
 function ExpandableCard:AddMiniButton(opts) return addMiniButton(self._win, self._group, opts) end
 function ExpandableCard:AddMiniExpandable(opts) return addMiniExpandable(self._win, self._group, opts) end
+function ExpandableCard:AddMiniKeybind(opts) return addMiniKeybind(self._win, self._group, opts) end
 
 -- ═══════════════════════════════════════════════════════════
 --  v3: НОВІ КОМПОНЕНТИ
@@ -3499,6 +3502,56 @@ end
 -- ═══════════════════════════════════════════════════════════
 --  v4: COLOR PICKER
 -- ═══════════════════════════════════════════════════════════
+-- Keybind усередині ExpandableCard / MiniExpandable (ті ж опції, що й у SubTab:AddKeybind)
+addMiniKeybind = function(win, g, opts)
+    opts = opts or {}
+    local flag = opts.flag
+    local host = makeHost(g.holder, 36, true, g:nextOrder(), false)
+    local lbl = label(host, opts.name or (opts.key and T(opts.key)) or flag or "Keybind", 12, Theme.text, {
+        Position = UDim2.fromOffset(10, 0), Size = UDim2.new(1, -120, 1, 0), TextTruncate = Enum.TextTruncate.AtEnd,
+    })
+    regText(win, lbl, opts.key)
+    local container = KeyMgr.accessories(host, 8, 22)
+    local function fit()
+        lbl.Size = UDim2.new(1, -(8 + container.AbsoluteSize.X / math.max(win._scale(), 0.01) + 14), 1, 0)
+    end
+    container:GetPropertyChangedSignal("AbsoluteSize"):Connect(fit)
+
+    local targetApply
+    local t = opts.target
+    if type(t) == "string" then targetApply = function(v) Library:SetFlag(t, v) end
+    elseif type(t) == "function" then targetApply = t
+    elseif type(t) == "table" and t.Set then targetApply = function(v) t:Set(v) end end
+    local hasState = targetApply ~= nil or opts.onToggle ~= nil
+    local showMode = opts.showMode
+    if showMode == nil then showMode = hasState end
+
+    local ctl = KeyMgr.buildControls(win, container, {
+        name = opts.listName or opts.name or flag or "Bind", flag = flag, default = opts.default,
+        mode = opts.mode or (hasState and "toggle" or "press"), modes = opts.modes, showMode = showMode, list = opts.list,
+        apply = targetApply, onPress = opts.onPress, onToggle = opts.onToggle, callback = opts.callback,
+        allowRightClick = true, bind = opts.bind, required = opts.required, compact = true, height = 22,
+    })
+    if opts.key and not opts.name and not opts.listName then
+        ctl.bind.name = T(opts.key)
+        table.insert(win._textElements, { type = "custom", update = function() ctl.bind.name = T(opts.key); win:_hudRefresh() end })
+    end
+    if type(t) == "string" then Library:OnFlagChanged(t, function(v) ctl.sync(v == true) end) end
+
+    local state = { hover = false, down = false }
+    interact(host, state, function(a) styleHost(host, nil, true, state, a) end)
+    win._onTheme(function() lbl.TextColor3 = Theme.text end)
+    g:add(host, function() return 36 end)
+    fit()
+
+    local api = setmetatable({
+        Get = function() return firstKeyCode(ctl.bind.keys) end,
+        GetCombo = function() return comboString(ctl.bind.keys) end,
+        Set = function(_, v) ctl.bind.api:Set(v, true); Library:_commit(flag, comboString(ctl.bind.keys)) end,
+    }, { __index = ctl.api })
+    return host, api
+end
+
 local PRESET_COLORS = { "FF3B5C", "FF8A3B", "FFD23B", "4BE37B", "3BDDFF", "4B7BFF", "A35BFF", "FF5BC8", "FFFFFF", "101018" }
 
 local function toHex(c)

@@ -620,6 +620,7 @@ Group:AddMiniSlider({ name = "Smooth", flag = "aim_smooth", min = 1, max = 20, d
 | `Card:AddMiniSwitch(opts)` | як у `AddToggle` (+ `keybind`, `color`) |
 | `Card:AddMiniSlider(opts)` | як у `AddSlider` |
 | `Card:AddMiniButton(opts)` | `name`, `callback`, `active` |
+| `Card:AddMiniKeybind(opts)` | як у `AddKeybind` (`name`, `default`, `mode`, `target`, `onToggle`, `flag`…); повертає `host, api` |
 | `Card:AddMiniExpandable(opts)` | `name`, `flag`, `default`, `callback` |
 | `Card:Refresh()` | примусово перерахувати висоту |
 
