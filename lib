@@ -1697,15 +1697,63 @@ function Library:CreateWindow(opts)
     end
     W._switchTab = switchTab
 
-    local function createTab(iconChar, textKey, displayText)
+local function createTab(iconChar, textKey, displayText)
         local index = #W._tabButtons + 1
         local text = displayText or (L[currentLang] and L[currentLang][textKey]) or textKey
+        
+        -- Перевіряємо, чи іконка є картинкою (rbxassetid або чистий ID)
+        local isAsset = false
+        local assetId = ""
+        if type(iconChar) == "string" then
+            if iconChar:match("^rbxassetid://") then
+                isAsset = true
+                assetId = iconChar
+            elseif iconChar:match("^%d+$") then
+                isAsset = true
+                assetId = "rbxassetid://" .. iconChar
+            end
+        end
+
         local btn = new("TextButton", {
-            Text = iconChar .. "  " .. text, _font = "r", TextSize = 13, TextColor3 = Theme.muted,
+            Text = isAsset and ("          " .. text) or (iconChar .. "  " .. text), _font = "r", TextSize = 13, TextColor3 = Theme.muted,
             Size = UDim2.new(1, -6, 0, TAB_H), BackgroundColor3 = Theme.card, BackgroundTransparency = 1,
             BorderSizePixel = 0, AutoButtonColor = false, TextXAlignment = LEFT, LayoutOrder = index, ZIndex = 2,
             TextTruncate = Enum.TextTruncate.AtEnd,
         }, tabList)
+        
+        -- Якщо це картинка — створюємо ImageLabel всередині кнопки
+        local iconImgLabel
+        if isAsset then
+            iconImgLabel = new("ImageLabel", {
+                Size = UDim2.fromOffset(18, 18),
+                Position = UDim2.new(0, 12, 0.5, -9),
+                BackgroundTransparency = 1,
+                Image = assetId,
+                ImageColor3 = Theme.muted,
+                ZIndex = 3,
+            }, btn)
+        end
+        
+        corner(btn, 9)
+        local btnPad = new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8) }, btn)
+        table.insert(W._tabButtons, btn)
+        table.insert(W._tabData, { btn = btn, icon = iconChar, textKey = textKey, displayText = text, iconImg = iconImgLabel })
+
+        local st = { hover = false, down = false }
+        local function render()
+            local active = (W._activeTab == index)
+            sp(btnPad, "PaddingLeft", UDim.new(0, active and 14 or (st.hover and 16 or 12)), SPRING.soft)
+            
+            local col = active and Theme.onAccent or (st.hover and Theme.text or Theme.muted)
+            tw(btn, 0.2, {
+                TextColor3 = col,
+                BackgroundTransparency = (not active and st.hover) and 0.45 or 1,
+            })
+            if iconImgLabel then
+                tw(iconImgLabel, 0.2, { ImageColor3 = col })
+            end
+        end
+        interact(btn, st, render)
         corner(btn, 9)
         local btnPad = new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 8) }, btn)
         table.insert(W._tabButtons, btn)
@@ -1874,7 +1922,8 @@ function Library:CreateWindow(opts)
             end
         end
         for _, data in ipairs(W._tabData) do
-            data.btn.Text = data.icon .. "  " .. ((tbl and tbl[data.textKey]) or (L.ENG and L.ENG[data.textKey]) or data.displayText or data.textKey)
+            local txt = ((tbl and tbl[data.textKey]) or (L.ENG and L.ENG[data.textKey]) or data.displayText or data.textKey)
+            data.btn.Text = data.iconImg and ("          " .. txt) or (data.icon .. "  " .. txt)
         end
     end
 
