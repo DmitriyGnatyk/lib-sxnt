@@ -1,3 +1,11 @@
+--[[
+    SXNT UI Library  v4.1
+    ─ ColorPicker (HSV + прозорість + HEX + rainbow), акцент, вибір шрифту (30+) і тем (28)
+    ─ біндфи: комбінації Q+1, режими toggle / hold / press; клавіша й колір прямо в перемикачах і картках
+    ─ HUD: водяний знак + список біндів (перетягуються, стикуються, зберігаються в конфіг)
+    ─ Window:AddSettingsTab — готова вкладка налаштувань; пружинні анімації
+]]
+
 local Players          = game:GetService("Players")
 local Workspace        = game:GetService("Workspace")
 local RunService       = game:GetService("RunService")
@@ -861,7 +869,7 @@ end
 --  LIBRARY TABLE / PUBLIC API
 -- ═══════════════════════════════════════════════════════════
 local Library = {}
-Library.Version = "4.0"
+Library.Version = "4.1"
 Library.Themes = THEMES
 Library.ThemeOrder = THEME_ORDER
 Library.Defaults = { avatar = DEFAULT_AVATAR }
@@ -1009,6 +1017,7 @@ function Library:T(key) return T(key) end
 
 function Library:ShowWelcome(opts) ShowWelcomeSplash(opts) end
 function Library:Unload()
+    Library.Unloaded = true   -- скрипти можуть зупиняти свої цикли: while not Library.Unloaded do
     for i = #Library._windows, 1, -1 do
         local w = Library._windows[i]
         if w then pcall(function() w:Destroy() end) end
@@ -1028,6 +1037,7 @@ local TAB_H, TAB_GAP = 36, 6
 -- ─── MAIN WINDOW ────────────────────────────────────────────
 function Library:CreateWindow(opts)
     opts = opts or {}
+    Library.Unloaded = false
     if opts.translations then Library:RegisterTranslations(opts.translations) end
     if opts.language and (VALID_LANGS[opts.language] or L[opts.language]) then currentLang = opts.language end
     if opts.theme then
@@ -2000,8 +2010,8 @@ function Window:GetThemeName() return currentThemeName end
 -- ═══════════════════════════════════════════════════════════
 --  TAB / SUBTAB
 -- ═══════════════════════════════════════════════════════════
-function Tab:AddSubTab(name)
-    name = tostring(name or "General")
+function Tab:AddSubTab(name, key)
+    name = tostring(name or (key and T(key)) or "General")
     local win = self._window
 
     -- спільний ряд "пілюль" з ковзним індикатором
@@ -2049,6 +2059,9 @@ function Tab:AddSubTab(name)
     }, self._pillList)
     corner(pill, 8)
     new("UIPadding", { PaddingLeft = UDim.new(0, 13), PaddingRight = UDim.new(0, 13) }, pill)
+    if key then   -- v4.1: AddSubTab(name, key) — назва пілюлі перекладається разом з інтерфейсом
+        table.insert(win._textElements, { type = "custom", update = function() pill.Text = T(key) end })
+    end
 
     local page = new("Frame", {
         Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, BackgroundTransparency = 1,
@@ -2558,7 +2571,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
             sp(frame, "Size", fs, SPRING.smooth); sp(holder, "Size", hs, SPRING.smooth)
             sp(arrow, "Rotation", value and 0 or -90, SPRING.soft)
         else
-            spSnap(frame, "Size", fs); spSnap(holder, "Size", hs); spSnap(arrow, "Rotation", value and 90 or 0)
+            spSnap(frame, "Size", fs); spSnap(holder, "Size", hs); spSnap(arrow, "Rotation", value and 0 or -90)
         end
         tw(arrow, animate and 0.3 or 0, { TextColor3 = value and Theme.accent or Theme.muted })
         if not value then
@@ -2607,8 +2620,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
         end, value)
     end
 
-    if opts.keybind and not compact then
-        local kb = type(opts.keybind) == "table" and opts.keybind or {}
+    if (opts.keybind or opts.color) and not compact then
         local kbH = 26
         local acc = new("Frame", {
             Name = "CardAccessories", AnchorPoint = Vector2.new(1, 0.5),
@@ -2620,6 +2632,8 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
             FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5),
             SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Center,
         }, acc)
+        if opts.keybind then
+        local kb = type(opts.keybind) == "table" and opts.keybind or {}
         local ctlKb = KeyMgr.buildControls(win, acc, {
             name = kb.name or opts.name or (opts.key and T(opts.key)) or flag or "Card",
             flag = kb.flag or (flag and (flag .. "_bind")),
@@ -2629,7 +2643,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
             list = kb.list, compact = false, height = kbH,
             onPress = kb.onPress, callback = kb.callback,
             apply = function(v)
-                if v ~= value then setValue(v); fire(v) end
+                if v ~= value then setValue(v); Library:_commit(flag, value); fire(v) end
             end,
         })
         ctlKb.sync(value)
@@ -2641,6 +2655,16 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
             end })
         end
         api.Bind = ctlKb.api
+        end
+        if opts.color then
+            local co = opts.color
+            if type(co) ~= "table" then co = { default = co } end
+            local chipObj = ColorUI.chip(win, acc, 0, {
+                default = co.default or co[1], flag = co.flag or (flag and (flag .. "_color")), callback = co.callback,
+                alpha = co.alpha, rainbow = co.rainbow, presets = co.presets, live = co.live,
+            }, kbH)
+            api.Color = chipObj.api
+        end
         -- стиснути label, щоб не залазив під аксесуари
         local function refit()
             local w = acc.AbsoluteSize.X / math.max(win._scale(), 0.01)
@@ -2652,6 +2676,7 @@ local function buildCollapsible(win, parent, order, opts, compact, parentGroup)
 
     layout(false)
     api.frame, api.holder, api.list, api.group = frame, holder, list, group
+    api.lbl = lbl
     api.targetH = targetH
     api.get = function() return value end
     return api
@@ -2982,7 +3007,7 @@ function SubTab:AddExpandableCard(opts)
     opts = opts or {}
     local win = self._window
     local c = buildCollapsible(win, self._container, self._LO(), opts, false, nil)
-    registerSearch(self, c.frame, nameOf(c.frame, opts.name or opts.flag or ""))
+    registerSearch(self, c.frame, function() return (c.lbl and c.lbl.Text) or opts.name or opts.flag or "" end)
     local cardObj = setmetatable({
         _card = c.frame, _holder = c.holder, _list = c.list, _group = c.group, _win = win,
         _C = Theme, _tw = tw, _corner = corner, _stroke = stroke, _isOpen = c.get(),
